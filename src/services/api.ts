@@ -1,15 +1,51 @@
 import { Stock, StockSearchResult, Notification, Analysis } from '../types';
 
+export interface YahooStockData {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  volume?: number;
+  marketCap?: number;
+  high?: number;
+  low?: number;
+  open?: number;
+  previousClose?: number;
+  targetPrice?: number;
+  alertType?: 'above' | 'below';
+}
+
 export class StockPulseAPI {
-  private baseURL: string;
+  private baseUrl: string;
   private token: string | null;
 
   constructor() {
-    this.baseURL = 'http://localhost:3001/api';
+    this.baseUrl = 'http://localhost:3001/api';
     this.token = localStorage.getItem('stockpulse_token');
   }
 
-  setToken(token: string): void {
+  private async request(endpoint: string, options: RequestInit = {}) {
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+      ...options.headers,
+    };
+
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Request failed');
+    }
+
+    return response.json();
+  }
+
+  setToken(token: string) {
     this.token = token;
     localStorage.setItem('stockpulse_token', token);
   }
@@ -18,81 +54,71 @@ export class StockPulseAPI {
     return this.token;
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...(this.token && { Authorization: `Bearer ${this.token}` }),
-      ...(options.headers || {})
-    };
-
-    const config: RequestInit = {
-      ...options,
-      headers
-    };
-
-    if (options.body && typeof options.body === 'object') {
-      config.body = JSON.stringify(options.body);
+  // Authentication methods
+  async register(userData: { 
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+  }) {
+    const response = await this.request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+    if (response.token) {
+      this.setToken(response.token);
     }
+    return response;
+  }
 
-    const response = await fetch(url, config);
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'API request failed');
+  async login(email: string, password: string) {
+    const response = await this.request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    if (response.token) {
+      this.setToken(response.token);
     }
-
-    return data;
+    return response;
   }
 
-  // Authentication
-  async login(email: string, password: string): Promise<{ token: string }> {
-    return this.request('/auth/login', {
+  async loginWithGoogle(credential: string) {
+    const response = await this.request('/auth/google', {
       method: 'POST',
-      body: { email, password } as any,
+      body: JSON.stringify({ credential }),
     });
+    if (response.token) {
+      this.setToken(response.token);
+    }
+    return response;
   }
 
-  async register(userData: { firstName: string; lastName: string; email: string; password: string }): Promise<{ token: string; user: any }> {
-    return this.request('/auth/register', {
-      method: 'POST',
-      body: userData as any,
-    });
-  }
-
-  async loginWithGoogle(credential: string): Promise<{ token: string }> {
-    return this.request('/auth/google', {
-      method: 'POST',
-      body: { credential } as any,
-    });
+  async getUserProfile() {
+    return this.request('/user/profile');
   }
 
   // Stock operations
-  async searchStocks(query: string): Promise<StockSearchResult[]> {
+  async searchStocks(query: string): Promise<YahooStockData[]> {
     return this.request(`/stocks/search?q=${encodeURIComponent(query)}`);
   }
 
-  async getStockData(symbol: string): Promise<Stock> {
+  async getStockData(symbol: string): Promise<YahooStockData> {
     return this.request(`/stocks/${symbol}`);
   }
 
-  async getStockPrice(symbol: string): Promise<number> {
-    return this.request(`/stocks/${symbol}/price`);
-  }
-
-  async getStockAnalysis(symbol: string): Promise<{ analysis: Analysis }> {
-    return this.request(`/stocks/${symbol}/analysis`);
+  async getTrendingStocks(): Promise<YahooStockData[]> {
+    return this.request('/stocks/trending/market');
   }
 
   // Watchlist operations
-  async getWatchlist(): Promise<Stock[]> {
+  async getWatchlist(): Promise<YahooStockData[]> {
     return this.request('/watchlist');
   }
 
   async addToWatchlist(symbol: string, targetPrice: number, alertType: 'above' | 'below' = 'above'): Promise<void> {
     return this.request('/watchlist', {
       method: 'POST',
-      body: { symbol, targetPrice, alertType } as any,
+      body: JSON.stringify({ symbol, targetPrice, alertType }),
     });
   }
 

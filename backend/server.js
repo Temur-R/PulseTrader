@@ -2,12 +2,38 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
+const bcrypt = require('bcryptjs');
+const yahooFinance = require('yahoo-finance2').default;
+require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+
+// In-memory user storage (replace with a database in production)
+const users = new Map();
+const watchlists = new Map();
+
+// Authentication middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid token' });
+    }
+    req.user = user;
+    next();
+  });
+};
 
 // Google OAuth verification endpoint
 app.post('/api/auth/google', async (req, res) => {
@@ -18,8 +44,18 @@ app.post('/api/auth/google', async (req, res) => {
     const response = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
     const { email, given_name, family_name, sub: googleId } = response.data;
 
-    // Check if user exists in your database, if not create a new user
-    // For now, we'll just create a token with the Google user info
+    // Check if user exists, if not create a new one
+    if (!users.has(email)) {
+      users.set(email, {
+        email,
+        firstName: given_name,
+        lastName: family_name,
+        googleId,
+        isGoogleUser: true
+      });
+    }
+
+    // Generate JWT token
     const token = jwt.sign(
       { 
         email,
@@ -31,11 +67,323 @@ app.post('/api/auth/google', async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    res.json({ token });
+    res.json({ 
+      token,
+      user: {
+        email,
+        firstName: given_name,
+        lastName: family_name
+      }
+    });
   } catch (error) {
     console.error('Google authentication error:', error);
     res.status(401).json({ error: 'Invalid Google credentials' });
   }
 });
 
-// ... existing code ... 
+// Regular email/password registration
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, firstName, lastName } = req.body;
+    
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    if (users.has(email)) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Store user
+    users.set(email, {
+      email,
+      password: hashedPassword,
+      firstName,
+      lastName,
+      isGoogleUser: false
+    });
+
+    // Generate token
+    const token = jwt.sign(
+      { email, firstName, lastName },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.status(201).json({
+      message: 'Registration successful',
+      token,
+      user: { email, firstName, lastName }
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
+// Regular email/password login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = users.get(email);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    if (user.isGoogleUser) {
+      return res.status(400).json({ error: 'Please use Google Sign-In for this account' });
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const token = jwt.sign(
+      { email, firstName: user.firstName, lastName: user.lastName },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.json({
+      message: 'Login successful',
+      token,
+      user: {
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Protected route example
+app.get('/api/user/profile', authenticateToken, (req, res) => {
+  const user = users.get(req.user.email);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  res.json({
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    isGoogleUser: user.isGoogleUser
+  });
+});
+
+// Stock-related endpoints
+app.get('/api/stocks/search', async (req, res) => {
+  try {
+    const query = req.query.q;
+    if (!query) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    const results = await yahooFinance.search(query, { newsCount: 0 });
+    console.log('Search results:', results);
+    
+    const stocks = await Promise.all(
+      results.quotes
+        .filter(quote => quote.quoteType === 'EQUITY')
+        .slice(0, 5)  // Limit to 5 results to avoid rate limiting
+        .map(async (quote) => {
+          try {
+            const details = await yahooFinance.quote(quote.symbol);
+            return {
+              symbol: details.symbol,
+              name: details.longName || details.shortName,
+              price: details.regularMarketPrice,
+              change: details.regularMarketChange,
+              changePercent: details.regularMarketChangePercent,
+              volume: details.regularMarketVolume,
+              marketCap: details.marketCap
+            };
+          } catch (error) {
+            console.error(`Error fetching details for ${quote.symbol}:`, error);
+            return null;
+          }
+        })
+    );
+    res.json(stocks.filter(stock => stock !== null));
+  } catch (error) {
+    console.error('Stock search error:', error);
+    res.status(500).json({ error: 'Failed to search stocks' });
+  }
+});
+
+app.get('/api/stocks/:symbol', async (req, res) => {
+  try {
+    const { symbol } = req.params;
+    console.log(`Fetching data for symbol: ${symbol}`);
+    
+    const quote = await yahooFinance.quote(symbol);
+    console.log('Received quote data:', quote);
+    
+    if (!quote || !quote.regularMarketPrice) {
+      return res.status(404).json({ error: 'Stock data not found' });
+    }
+
+    const result = {
+      symbol: quote.symbol,
+      name: quote.longName || quote.shortName,
+      price: quote.regularMarketPrice,
+      change: quote.regularMarketChange || 0,
+      changePercent: quote.regularMarketChangePercent || 0,
+      volume: quote.regularMarketVolume,
+      marketCap: quote.marketCap,
+      high: quote.regularMarketDayHigh,
+      low: quote.regularMarketDayLow,
+      open: quote.regularMarketOpen,
+      previousClose: quote.regularMarketPreviousClose
+    };
+    console.log('Sending response:', result);
+    res.json(result);
+  } catch (error) {
+    console.error('Stock data error:', error);
+    res.status(500).json({ error: 'Failed to fetch stock data' });
+  }
+});
+
+app.get('/api/stocks/trending/market', async (req, res) => {
+  try {
+    const trendingStocks = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA', 'AMD'];
+    console.log('Fetching trending stocks:', trendingStocks);
+    
+    const quotes = await Promise.all(
+      trendingStocks.map(async (symbol) => {
+        try {
+          const quote = await yahooFinance.quote(symbol);
+          if (!quote || !quote.regularMarketPrice) {
+            console.error(`No data available for ${symbol}`);
+            return null;
+          }
+          return {
+            symbol: quote.symbol,
+            name: quote.longName || quote.shortName,
+            price: quote.regularMarketPrice,
+            change: quote.regularMarketChange || 0,
+            changePercent: quote.regularMarketChangePercent || 0,
+            volume: quote.regularMarketVolume,
+            marketCap: quote.marketCap
+          };
+        } catch (error) {
+          console.error(`Error fetching ${symbol}:`, error);
+          return null;
+        }
+      })
+    );
+    
+    const validQuotes = quotes.filter(q => q !== null);
+    console.log('Sending trending stocks:', validQuotes);
+    res.json(validQuotes);
+  } catch (error) {
+    console.error('Trending stocks error:', error);
+    res.status(500).json({ error: 'Failed to fetch trending stocks' });
+  }
+});
+
+// Watchlist endpoints
+app.get('/api/watchlist', authenticateToken, async (req, res) => {
+  try {
+    const userWatchlist = watchlists.get(req.user.email) || [];
+    console.log(`Fetching watchlist for user ${req.user.email}:`, userWatchlist);
+    
+    const watchlistData = await Promise.all(
+      userWatchlist.map(async (item) => {
+        try {
+          const quote = await yahooFinance.quote(item.symbol);
+          if (!quote || !quote.regularMarketPrice) {
+            console.error(`No data available for ${item.symbol}`);
+            return null;
+          }
+          return {
+            symbol: quote.symbol,
+            name: quote.longName || quote.shortName,
+            price: quote.regularMarketPrice,
+            change: quote.regularMarketChange || 0,
+            changePercent: quote.regularMarketChangePercent || 0,
+            volume: quote.regularMarketVolume,
+            marketCap: quote.marketCap,
+            targetPrice: item.targetPrice,
+            alertType: item.alertType
+          };
+        } catch (error) {
+          console.error(`Error fetching ${item.symbol}:`, error);
+          return null;
+        }
+      })
+    );
+    
+    const validWatchlistData = watchlistData.filter(item => item !== null);
+    console.log('Sending watchlist data:', validWatchlistData);
+    res.json(validWatchlistData);
+  } catch (error) {
+    console.error('Watchlist error:', error);
+    res.status(500).json({ error: 'Failed to fetch watchlist' });
+  }
+});
+
+app.post('/api/watchlist', authenticateToken, async (req, res) => {
+  try {
+    const { symbol, targetPrice, alertType } = req.body;
+    if (!symbol || targetPrice === undefined || !alertType) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Verify the stock exists and get current data
+    const quote = await yahooFinance.quote(symbol);
+    if (!quote || !quote.regularMarketPrice) {
+      return res.status(404).json({ error: 'Stock not found' });
+    }
+
+    const userEmail = req.user.email;
+    const userWatchlist = watchlists.get(userEmail) || [];
+    
+    if (userWatchlist.some(item => item.symbol === symbol)) {
+      return res.status(400).json({ error: 'Stock already in watchlist' });
+    }
+
+    userWatchlist.push({ 
+      symbol, 
+      targetPrice: Number(targetPrice), 
+      alertType,
+      addedAt: new Date().toISOString()
+    });
+    watchlists.set(userEmail, userWatchlist);
+    
+    console.log(`Added ${symbol} to watchlist for ${userEmail}`);
+    res.status(201).json({ message: 'Added to watchlist' });
+  } catch (error) {
+    console.error('Add to watchlist error:', error);
+    res.status(500).json({ error: 'Failed to add to watchlist' });
+  }
+});
+
+app.delete('/api/watchlist/:symbol', authenticateToken, (req, res) => {
+  try {
+    const { symbol } = req.params;
+    const userEmail = req.user.email;
+    const userWatchlist = watchlists.get(userEmail) || [];
+    
+    const updatedWatchlist = userWatchlist.filter(item => item.symbol !== symbol);
+    watchlists.set(userEmail, updatedWatchlist);
+    
+    res.json({ message: 'Removed from watchlist' });
+  } catch (error) {
+    console.error('Remove from watchlist error:', error);
+    res.status(500).json({ error: 'Failed to remove from watchlist' });
+  }
+});
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+}); 

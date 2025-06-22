@@ -1,34 +1,44 @@
-import React, { useState } from 'react';
-import { TrendingUp, TrendingDown, X, Brain } from 'lucide-react';
-import { Stock, Analysis } from '../types';
+import React from 'react';
+import { TrendingUp, TrendingDown, X } from 'lucide-react';
+import { WatchlistItem } from '../types';
 import { StockPulseAPI } from '../services/api';
 
 interface EnhancedStockCardProps {
-  stock: Stock;
+  stock: WatchlistItem;
   onRemove: (symbol: string) => void;
   api: StockPulseAPI;
 }
 
-export const EnhancedStockCard: React.FC<EnhancedStockCardProps> = ({ stock, onRemove, api }) => {
-  const [analysis, setAnalysis] = useState<Analysis | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [showAnalysis, setShowAnalysis] = useState(false);
-
-  const isPositive = stock.change >= 0;
-  const targetDistance = stock.currentPrice ? 
-    ((stock.targetPrice - stock.currentPrice) / stock.currentPrice * 100).toFixed(2) : 0;
-
-  const fetchAnalysis = async () => {
-    setLoading(true);
-    try {
-      const response = await api.getStockAnalysis(stock.symbol);
-      setAnalysis(response.analysis);
-    } catch (error) {
-      console.error('Failed to fetch analysis:', error);
-    } finally {
-      setLoading(false);
+export const EnhancedStockCard: React.FC<EnhancedStockCardProps> = ({ stock, onRemove }) => {
+  const isPositive = (stock.change || 0) >= 0;
+  
+  // Helper function to safely format numbers
+  const formatNumber = (value: number | undefined, decimals: number = 2): string => {
+    if (value === undefined || value === null || isNaN(value)) {
+      return 'N/A';
     }
+    return value.toFixed(decimals);
   };
+
+  // Helper function to format large numbers
+  const formatLargeNumber = (value: number | undefined): string => {
+    if (value === undefined || value === null || isNaN(value)) {
+      return 'N/A';
+    }
+    if (value >= 1e12) {
+      return `$${(value / 1e12).toFixed(2)}T`;
+    }
+    if (value >= 1e9) {
+      return `$${(value / 1e9).toFixed(2)}B`;
+    }
+    if (value >= 1e6) {
+      return `$${(value / 1e6).toFixed(2)}M`;
+    }
+    return `$${value.toLocaleString()}`;
+  };
+
+  const targetDistance = stock.price ? 
+    ((stock.targetPrice - stock.price) / stock.price * 100) : 0;
 
   return (
     <div className="bg-slate-800/50 backdrop-blur-sm border border-cyan-500/20 rounded-xl p-6 hover:border-cyan-500/40 transition-all duration-200">
@@ -47,59 +57,41 @@ export const EnhancedStockCard: React.FC<EnhancedStockCardProps> = ({ stock, onR
 
       <div className="flex items-center space-x-4 mb-4">
         <div className="text-2xl font-bold text-white">
-          ${stock.currentPrice?.toFixed(2)}
+          ${formatNumber(stock.price)}
         </div>
         <div className={`flex items-center ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
           {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-          <span className="ml-1">{Math.abs(stock.change)}%</span>
+          <span className="ml-1">{formatNumber(stock.changePercent)}%</span>
         </div>
       </div>
 
       <div className="flex items-center justify-between mb-4">
         <div>
           <p className="text-gray-400 text-sm">Target Price</p>
-          <p className="text-white font-semibold">${stock.targetPrice}</p>
+          <p className="text-white font-semibold">${formatNumber(stock.targetPrice)}</p>
         </div>
         <div>
           <p className="text-gray-400 text-sm">Distance</p>
-          <p className="text-white font-semibold">{targetDistance}%</p>
+          <p className={`font-semibold ${targetDistance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {formatNumber(targetDistance)}%
+          </p>
         </div>
       </div>
 
-      <div className="mt-4">
-        <button
-          onClick={() => {
-            if (!analysis && !showAnalysis) {
-              fetchAnalysis();
-            }
-            setShowAnalysis(!showAnalysis);
-          }}
-          className="flex items-center space-x-2 text-cyan-400 hover:text-cyan-300 transition-colors"
-        >
-          <Brain className="w-4 h-4" />
-          <span>{showAnalysis ? 'Hide Analysis' : 'Show Analysis'}</span>
-        </button>
-
-        {showAnalysis && (
-          <div className="mt-4 p-4 bg-slate-700/50 rounded-lg">
-            {loading ? (
-              <div className="text-center text-gray-400">Loading analysis...</div>
-            ) : analysis ? (
-              <div>
-                <p className="text-white mb-2">{analysis.summary}</p>
-                <div className="flex items-center space-x-2 text-sm">
-                  <span className={`px-2 py-1 rounded ${analysis.sentiment === 'bullish' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                    {analysis.sentiment.toUpperCase()}
-                  </span>
-                  <span className="text-gray-400">Confidence: {analysis.confidence}%</span>
-                </div>
-              </div>
-            ) : (
-              <div className="text-gray-400">Failed to load analysis</div>
-            )}
+      {stock.volume !== undefined && (
+        <div className="mt-4 pt-4 border-t border-cyan-500/20">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-gray-400 text-sm">Volume</p>
+              <p className="text-white">{stock.volume.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-gray-400 text-sm">Market Cap</p>
+              <p className="text-white">{formatLargeNumber(stock.marketCap)}</p>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }; 
