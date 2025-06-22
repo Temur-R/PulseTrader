@@ -1,0 +1,216 @@
+import React, { useState, useEffect } from 'react';
+import { TrendingUp, Shield, Zap, Users, Star, ArrowRight, Play, Bell } from 'lucide-react';
+
+interface HomepageProps {
+  onSignIn: () => void;
+  onGetStarted: () => void;
+}
+
+export const Homepage: React.FC<HomepageProps> = ({ onSignIn, onGetStarted }) => {
+  const [animatedNumbers, setAnimatedNumbers] = useState({ users: 0, alerts: 0, stocks: 0 });
+
+  // Animate numbers on load
+  useEffect(() => {
+    const targetNumbers = {
+      users: 10000,
+      alerts: 50000,
+      stocks: 5000
+    };
+
+    const duration = 2000; // Animation duration in milliseconds
+    const steps = 60; // Number of steps in the animation
+    const interval = duration / steps;
+
+    const incrementValues = {
+      users: targetNumbers.users / steps,
+      alerts: targetNumbers.alerts / steps,
+      stocks: targetNumbers.stocks / steps
+    };
+
+    let currentStep = 0;
+
+    const timer = setInterval(() => {
+      if (currentStep < steps) {
+        setAnimatedNumbers(prev => ({
+          users: Math.min(Math.round(prev.users + incrementValues.users), targetNumbers.users),
+          alerts: Math.min(Math.round(prev.alerts + incrementValues.alerts), targetNumbers.alerts),
+          stocks: Math.min(Math.round(prev.stocks + incrementValues.stocks), targetNumbers.stocks)
+        }));
+        currentStep++;
+      } else {
+        clearInterval(timer);
+      }
+    }, interval);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const testimonials = [
+    {
+      name: "Sarah Chen",
+      role: "Day Trader",
+      content: "StockPulse has completely transformed how I monitor my portfolio. The instant alerts have saved me thousands.",
+      rating: 5
+    },
+    {
+      name: "Michael Rodriguez",
+      role: "Investment Advisor",
+      content: "My clients love the clean interface and reliable notifications. It's become an essential tool in our workflow.",
+      rating: 5
+    },
+    {
+      name: "Emily Johnson",
+      role: "Retail Investor",
+      content: "Finally, a stock app that doesn't overwhelm me with features I don't need. Simple, powerful, perfect.",
+      rating: 5
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-slate-900">
+      {/* Hero Section */}
+      <section className="relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 pt-16 pb-24">
+          <div className="text-center">
+            <h1 className="text-4xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 mb-6">
+              Real-Time Stock Monitoring<br />Made Simple
+            </h1>
+            <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+              Track your favorite stocks, get instant alerts, and make informed decisions with our powerful stock monitoring platform.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6">
+              <button
+                onClick={onGetStarted}
+                className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-8 py-3 rounded-lg text-lg font-semibold transition-all duration-200 transform hover:scale-105 flex items-center justify-center"
+              >
+                <span>Get Started</span>
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </button>
+              <button
+                onClick={onSignIn}
+                className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white px-8 py-3 rounded-lg text-lg font-semibold transition-colors flex items-center justify-center"
+              >
+                <span>Sign In</span>
+                <Play className="w-5 h-5 ml-2" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-16 bg-slate-800/50">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div>
+              <div className="text-4xl md:text-5xl font-bold text-cyan-400 mb-2">
+                {animatedNumbers.users.toLocaleString()}+
+              </div>
+              <div className="text-gray-300 text-lg">Active Users</div>
+            </div>
+            <div>
+              <div className="text-4xl md:text-5xl font-bold text-blue-400 mb-2">
+                {animatedNumbers.alerts.toLocaleString()}+
+              </div>
+              <div className="text-gray-300 text-lg">Alerts Sent</div>
+            </div>
+            <div>
+              <div className="text-4xl md:text-5xl font-bold text-cyan-400 mb-2">
+                {animatedNumbers.stocks.toLocaleString()}+
+              </div>
+              <div className="text-gray-300 text-lg">Stocks Tracked</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="py-24">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              Everything You Need to Stay <span className="text-cyan-400">Informed</span>
+            </h2>
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+              Our powerful platform combines real-time data with intelligent alerts to keep you ahead of market movements.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="bg-slate-800/50 backdrop-blur-sm border border-cyan-500/20 rounded-xl p-8 hover:border-cyan-500/40 transition-all duration-200 group">
+              <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Bell className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-4">Smart Alerts</h3>
+              <p className="text-gray-300">Get notified instantly when stocks hit your target prices via email, SMS, or push notifications.</p>
+            </div>
+
+            <div className="bg-slate-800/50 backdrop-blur-sm border border-cyan-500/20 rounded-xl p-8 hover:border-cyan-500/40 transition-all duration-200 group">
+              <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Zap className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-4">Real-Time Data</h3>
+              <p className="text-gray-300">Access live market data with minimal delay. Never miss a crucial moment in the market.</p>
+            </div>
+
+            <div className="bg-slate-800/50 backdrop-blur-sm border border-cyan-500/20 rounded-xl p-8 hover:border-cyan-500/40 transition-all duration-200 group">
+              <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Shield className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-4">Secure & Reliable</h3>
+              <p className="text-gray-300">Bank-level security with 99.9% uptime. Your data and alerts are always protected.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section id="testimonials" className="py-24 bg-slate-800/50">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              Loved by <span className="text-cyan-400">Traders</span>
+            </h2>
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+              Join thousands of satisfied traders who trust StockPulse for their market monitoring needs.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {testimonials.map((testimonial, index) => (
+              <div key={index} className="bg-slate-800/50 backdrop-blur-sm border border-cyan-500/20 rounded-xl p-8">
+                <div className="flex items-center mb-4">
+                  {[...Array(testimonial.rating)].map((_, i) => (
+                    <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
+                  ))}
+                </div>
+                <p className="text-gray-300 mb-6">{testimonial.content}</p>
+                <div>
+                  <div className="font-semibold text-white">{testimonial.name}</div>
+                  <div className="text-cyan-400">{testimonial.role}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-24">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl p-12 text-center">
+            <h2 className="text-4xl font-bold text-white mb-6">
+              Ready to Transform Your Trading?
+            </h2>
+            <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
+              Join StockPulse today and experience the power of intelligent stock monitoring.
+            </p>
+            <button onClick={onGetStarted} className="bg-white text-blue-600 px-8 py-4 rounded-xl text-lg font-semibold transition-all duration-200 transform hover:scale-105 hover:bg-gray-100">
+              Get Started Now
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}; 
