@@ -179,6 +179,15 @@ app.get('/api/user/profile', authenticateToken, (req, res) => {
   });
 });
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ error: 'Invalid JSON' });
+  }
+  next(err);
+});
+
 // Stock-related endpoints
 app.get('/api/stocks/search', async (req, res) => {
   try {
@@ -187,24 +196,29 @@ app.get('/api/stocks/search', async (req, res) => {
       return res.status(400).json({ error: 'Search query is required' });
     }
 
+    console.log('Searching for:', query);
     const results = await yahooFinance.search(query, { newsCount: 0 });
     console.log('Search results:', results);
-    
+
+    if (!results || !results.quotes) {
+      return res.status(404).json({ error: 'No results found' });
+    }
+
     const stocks = await Promise.all(
       results.quotes
         .filter(quote => quote.quoteType === 'EQUITY')
-        .slice(0, 5)  // Limit to 5 results to avoid rate limiting
+        .slice(0, 5)
         .map(async (quote) => {
           try {
             const details = await yahooFinance.quote(quote.symbol);
             return {
-              symbol: details.symbol,
-              name: details.longName || details.shortName,
-              price: details.regularMarketPrice,
-              change: details.regularMarketChange,
-              changePercent: details.regularMarketChangePercent,
-              volume: details.regularMarketVolume,
-              marketCap: details.marketCap
+              symbol: details.symbol || quote.symbol,
+              name: details.longName || details.shortName || quote.shortName || quote.symbol,
+              price: details.regularMarketPrice || 0,
+              change: details.regularMarketChange || 0,
+              changePercent: details.regularMarketChangePercent || 0,
+              volume: details.regularMarketVolume || 0,
+              marketCap: details.marketCap || 0
             };
           } catch (error) {
             console.error(`Error fetching details for ${quote.symbol}:`, error);
@@ -212,9 +226,11 @@ app.get('/api/stocks/search', async (req, res) => {
           }
         })
     );
-    res.json(stocks.filter(stock => stock !== null));
+
+    const validStocks = stocks.filter(stock => stock !== null);
+    res.json(validStocks);
   } catch (error) {
-    console.error('Stock search error:', error);
+    console.error('Search error:', error);
     res.status(500).json({ error: 'Failed to search stocks' });
   }
 });
@@ -227,23 +243,24 @@ app.get('/api/stocks/:symbol', async (req, res) => {
     const quote = await yahooFinance.quote(symbol);
     console.log('Received quote data:', quote);
     
-    if (!quote || !quote.regularMarketPrice) {
+    if (!quote) {
       return res.status(404).json({ error: 'Stock data not found' });
     }
 
     const result = {
       symbol: quote.symbol,
-      name: quote.longName || quote.shortName,
-      price: quote.regularMarketPrice,
+      name: quote.longName || quote.shortName || symbol,
+      price: quote.regularMarketPrice || quote.price || 0,
       change: quote.regularMarketChange || 0,
       changePercent: quote.regularMarketChangePercent || 0,
-      volume: quote.regularMarketVolume,
-      marketCap: quote.marketCap,
-      high: quote.regularMarketDayHigh,
-      low: quote.regularMarketDayLow,
-      open: quote.regularMarketOpen,
-      previousClose: quote.regularMarketPreviousClose
+      volume: quote.regularMarketVolume || 0,
+      marketCap: quote.marketCap || 0,
+      high: quote.regularMarketDayHigh || 0,
+      low: quote.regularMarketDayLow || 0,
+      open: quote.regularMarketOpen || 0,
+      previousClose: quote.regularMarketPreviousClose || 0
     };
+    
     console.log('Sending response:', result);
     res.json(result);
   } catch (error) {
@@ -260,32 +277,36 @@ app.get('/api/stocks/trending/market', async (req, res) => {
     const quotes = await Promise.all(
       trendingStocks.map(async (symbol) => {
         try {
+          console.log(`Fetching data for ${symbol}...`);
           const quote = await yahooFinance.quote(symbol);
-          if (!quote || !quote.regularMarketPrice) {
+          console.log(`Received data for ${symbol}:`, quote);
+          
+          if (!quote) {
             console.error(`No data available for ${symbol}`);
             return null;
           }
+
           return {
             symbol: quote.symbol,
-            name: quote.longName || quote.shortName,
-            price: quote.regularMarketPrice,
+            name: quote.longName || quote.shortName || symbol,
+            price: quote.regularMarketPrice || 0,
             change: quote.regularMarketChange || 0,
             changePercent: quote.regularMarketChangePercent || 0,
-            volume: quote.regularMarketVolume,
-            marketCap: quote.marketCap
+            volume: quote.regularMarketVolume || 0,
+            marketCap: quote.marketCap || 0
           };
         } catch (error) {
-          console.error(`Error fetching ${symbol}:`, error);
+          console.error(`Error fetching data for ${symbol}:`, error);
           return null;
         }
       })
     );
-    
-    const validQuotes = quotes.filter(q => q !== null);
+
+    const validQuotes = quotes.filter(quote => quote !== null);
     console.log('Sending trending stocks:', validQuotes);
     res.json(validQuotes);
   } catch (error) {
-    console.error('Trending stocks error:', error);
+    console.error('Error fetching trending stocks:', error);
     res.status(500).json({ error: 'Failed to fetch trending stocks' });
   }
 });
@@ -299,19 +320,23 @@ app.get('/api/watchlist', authenticateToken, async (req, res) => {
     const watchlistData = await Promise.all(
       userWatchlist.map(async (item) => {
         try {
+          console.log(`Fetching data for ${item.symbol}...`);
           const quote = await yahooFinance.quote(item.symbol);
-          if (!quote || !quote.regularMarketPrice) {
+          console.log(`Received data for ${item.symbol}:`, quote);
+          
+          if (!quote) {
             console.error(`No data available for ${item.symbol}`);
             return null;
           }
+
           return {
-            symbol: quote.symbol,
-            name: quote.longName || quote.shortName,
-            price: quote.regularMarketPrice,
+            symbol: quote.symbol || item.symbol,
+            name: quote.longName || quote.shortName || item.symbol,
+            price: quote.regularMarketPrice || quote.price || 0,
             change: quote.regularMarketChange || 0,
             changePercent: quote.regularMarketChangePercent || 0,
-            volume: quote.regularMarketVolume,
-            marketCap: quote.marketCap,
+            volume: quote.regularMarketVolume || 0,
+            marketCap: quote.marketCap || 0,
             targetPrice: item.targetPrice,
             alertType: item.alertType
           };
@@ -334,13 +359,19 @@ app.get('/api/watchlist', authenticateToken, async (req, res) => {
 app.post('/api/watchlist', authenticateToken, async (req, res) => {
   try {
     const { symbol, targetPrice, alertType } = req.body;
+    
     if (!symbol || targetPrice === undefined || !alertType) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     // Verify the stock exists and get current data
-    const quote = await yahooFinance.quote(symbol);
-    if (!quote || !quote.regularMarketPrice) {
+    try {
+      const quote = await yahooFinance.quote(symbol);
+      if (!quote || !quote.regularMarketPrice) {
+        return res.status(404).json({ error: 'Stock not found' });
+      }
+    } catch (error) {
+      console.error(`Error verifying stock ${symbol}:`, error);
       return res.status(404).json({ error: 'Stock not found' });
     }
 
@@ -383,7 +414,7 @@ app.delete('/api/watchlist/:symbol', authenticateToken, (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const port = process.env.PORT || 3001;
+const server = app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 }); 
