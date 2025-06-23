@@ -24,7 +24,7 @@
   },
   "scripts": {
     "start": "set PORT=3003 && react-app-rewired start",
-    "build": "react-app-rewired build",
+    "build": "react-app-rewired build && cp config-overrides.js build/",
     "test": "react-app-rewired test",
     "eject": "react-scripts eject"
   },
