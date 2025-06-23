@@ -7,8 +7,22 @@ const yahooFinance = require('yahoo-finance2').default;
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+
+// Configure CORS with specific options
+app.use(cors({
+  origin: 'http://localhost:3000', // Allow frontend origin
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
 app.use(express.json());
+
+// Add request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -210,7 +224,9 @@ app.get('/api/stocks/search', async (req, res) => {
         .slice(0, 5)
         .map(async (quote) => {
           try {
+            console.log(`Fetching details for ${quote.symbol}`);
             const details = await yahooFinance.quote(quote.symbol);
+            console.log(`Details for ${quote.symbol}:`, details);
             return {
               symbol: details.symbol || quote.symbol,
               name: details.longName || details.shortName || quote.shortName || quote.symbol,
@@ -228,10 +244,11 @@ app.get('/api/stocks/search', async (req, res) => {
     );
 
     const validStocks = stocks.filter(stock => stock !== null);
+    console.log('Sending response:', validStocks);
     res.json(validStocks);
   } catch (error) {
     console.error('Search error:', error);
-    res.status(500).json({ error: 'Failed to search stocks' });
+    res.status(500).json({ error: 'Failed to search stocks', details: error.message });
   }
 });
 
