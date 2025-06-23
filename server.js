@@ -193,7 +193,17 @@ wss.on('connection', (ws) => {
   });
 });
 
+const path = require('path');
 const PORT = process.env.PORT || 3002;
+
+// Serve static files from React build
+app.use(express.static(path.join(__dirname, 'build')));
+
+// Handle React routing, return all requests to React app
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
+
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 }); 
