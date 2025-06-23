@@ -108,30 +108,63 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
 
   const addToWatchlist = async (symbol: string) => {
     try {
+      console.log('Adding to watchlist:', symbol);
       const stockData = await api.getStockData(symbol);
+      console.log('Stock data received:', stockData);
+      
+      if (!stockData || !stockData.price) {
+        console.error('Invalid stock data received:', stockData);
+        return;
+      }
+
+      // Set default target price to 10% above current price
       const targetPrice = stockData.price * 1.1;
-      await api.addToWatchlist(symbol, targetPrice);
+      // Set default alert type to 'above'
+      const alertType = 'above';
+      
+      console.log('Calling addToWatchlist with:', { symbol, targetPrice, alertType });
+      await api.addToWatchlist(symbol, targetPrice, alertType);
+      console.log('Successfully added to watchlist, fetching updated watchlist');
+      
+      // Fetch the updated watchlist
       const watchlistData = await api.getWatchlist();
-      // Ensure watchlist items have required properties
+      console.log('New watchlist data:', watchlistData);
+      
+      // Convert YahooStockData to WatchlistItem
       const validWatchlistData = watchlistData.map(item => ({
         ...item,
         targetPrice: item.targetPrice || item.price * 1.1,
         alertType: item.alertType || 'above'
       })) as WatchlistItem[];
+      
+      // Update the local state with the new watchlist
       setStocks(validWatchlistData);
+      
+      // Clear the search
       setSearchResults([]);
       setSearchQuery('');
+      
+      // Show success message (you can add a toast notification here if you want)
+      console.log('Successfully added', symbol, 'to watchlist');
     } catch (error) {
       console.error('Failed to add stock:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', error.message);
+      }
     }
   };
 
   const removeFromWatchlist = async (symbol: string) => {
     try {
+      console.log('Removing from watchlist:', symbol);
       await api.removeFromWatchlist(symbol);
+      console.log('Successfully removed from watchlist');
       setStocks(current => current.filter(stock => stock.symbol !== symbol));
     } catch (error) {
       console.error('Failed to remove stock:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', error.message);
+      }
     }
   };
 

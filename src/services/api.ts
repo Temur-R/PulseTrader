@@ -32,6 +32,15 @@ export class StockPulseAPI {
       ...options.headers,
     };
 
+    console.log('Making API request to:', `${this.baseUrl}${endpoint}`);
+    console.log('Request options:', {
+      ...options,
+      headers: {
+        ...headers,
+        Authorization: this.token ? 'Bearer [TOKEN]' : undefined
+      }
+    });
+
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       ...options,
       headers,
@@ -39,10 +48,17 @@ export class StockPulseAPI {
 
     if (!response.ok) {
       const error = await response.json();
+      console.error('API request failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        error
+      });
       throw new Error(error.error || 'Request failed');
     }
 
-    return response.json();
+    const data = await response.json();
+    console.log('API response:', data);
+    return data;
   }
 
   setToken(token: string) {

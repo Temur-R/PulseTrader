@@ -18,7 +18,7 @@ const GoogleIcon = () => (
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
 
-const AuthPages: React.FC<{ onAuthSuccess?: () => void }> = ({ onAuthSuccess }) => {
+const AuthPages: React.FC<{ onAuthSuccess: (token: string) => void }> = ({ onAuthSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -47,7 +47,7 @@ const AuthPages: React.FC<{ onAuthSuccess?: () => void }> = ({ onAuthSuccess }) 
       if (response.token) {
         localStorage.setItem('stockpulse_token', response.token);
         api.setToken(response.token);
-        onAuthSuccess?.();
+        onAuthSuccess(response.token);
       } else {
         setError('Authentication failed. Please try again.');
       }
@@ -63,7 +63,7 @@ const AuthPages: React.FC<{ onAuthSuccess?: () => void }> = ({ onAuthSuccess }) 
       if (response.token) {
         localStorage.setItem('stockpulse_token', response.token);
         api.setToken(response.token);
-        onAuthSuccess?.();
+        onAuthSuccess(response.token);
       } else {
         setError('Google authentication failed. Please try again.');
       }
