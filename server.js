@@ -75,17 +75,24 @@ const axios = require('axios');
 
 app.get('/api/stocks/search', authenticateToken, async (req, res) => {
   try {
-    const response = await axios.get(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(req.query.q)}`, {
+    const response = await axios.get(`https://query1.finance.yahoo.com/v6/finance/quote`, {
+      params: {
+        symbols: req.query.q,
+        lang: 'en-US',
+        region: 'US'
+      },
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Origin': 'https://finance.yahoo.com'
       }
     });
     
-    const results = response.data.quotes
+    const results = response.data.quoteResponse.result
       .filter(q => q.quoteType === 'EQUITY')
       .map(q => ({
         symbol: q.symbol,
-        name: q.longname || q.shortname,
+        name: q.longName || q.shortName,
         price: q.regularMarketPrice,
         change: q.regularMarketChange
       }));

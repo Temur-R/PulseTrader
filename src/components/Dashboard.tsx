@@ -204,11 +204,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
                     className="w-full px-4 py-2 text-left hover:bg-slate-700/50 text-white"
                   >
                     <div className="font-semibold">{result.symbol}</div>
-                    <div className="text-sm text-gray-400">{result.name}</div>
+                    <div className="text-sm text-gray-400">{result.name || 'N/A'}</div>
                     <div className="text-sm">
-                      <span className={result.change >= 0 ? 'text-green-400' : 'text-red-400'}>
-                        ${result.price?.toFixed(2)} ({result.change >= 0 ? '+' : ''}{result.change?.toFixed(2)})
-                      </span>
+                      {result.price ? (
+                        <span className={result.change >= 0 ? 'text-green-400' : 'text-red-400'}>
+                          ${result.price.toFixed(2)} ({result.change >= 0 ? '+' : ''}{result.change?.toFixed(2)})
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">Price unavailable</span>
+                      )}
                     </div>
                   </button>
                 ))}
@@ -250,7 +254,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
             </div>
           ) : (
             <div className="text-gray-400">
-              Your watchlist is empty. Add stocks by searching above or from the trending section below.
+              <div className="flex flex-col items-center space-y-4">
+                <div className="text-gray-400">No matching stocks found</div>
+                {searchQuery && (
+                  <div className="text-sm text-gray-500">
+                    Searching for: "{searchQuery}"
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
