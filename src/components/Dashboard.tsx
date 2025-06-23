@@ -217,18 +217,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
           </div>
 
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
               className="relative p-2 text-gray-400 hover:text-white transition-colors"
-            >
-              <Bell className="w-6 h-6" />
+              >
+                <Bell className="w-6 h-6" />
               {notifications.some(n => !n.read) && (
                 <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full"></span>
-              )}
-            </button>
+                )}
+              </button>
             <button className="p-2 text-gray-400 hover:text-white transition-colors">
               <Settings className="w-6 h-6" />
-            </button>
+                  </button>
           </div>
         </div>
 
@@ -238,7 +238,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
           {loading ? (
             <div className="text-white">Loading watchlist...</div>
           ) : stocks.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {stocks.map(stock => (
                 <EnhancedStockCard
                   key={stock.symbol}
