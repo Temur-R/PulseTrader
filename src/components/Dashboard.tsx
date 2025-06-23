@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Plus, TrendingUp, Settings } from 'lucide-react';
 import { Stock, WatchlistItem, Notification, WebSocketMessage } from '../types';
-import { StockPulseAPI, YahooStockData } from '../services/api';
-import { StockPulseWebSocket } from '../services/websocket';
+import { PulseTraderAPI, YahooStockData } from '../services/api';
+import { PulseTraderWebSocket } from '../services/websocket';
 import { EnhancedStockCard } from './EnhancedStockCard';
 
 interface DashboardProps {
-  api: StockPulseAPI;
+  api: PulseTraderAPI;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
@@ -53,7 +53,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
     loadInitialData();
 
     // Setup WebSocket
-    const ws = new StockPulseWebSocket(api.getToken() || '', handleWebSocketMessage);
+    const ws = new PulseTraderWebSocket(api.getToken() || '', handleWebSocketMessage);
     ws.connect();
 
     // Refresh trending stocks every minute

@@ -16,13 +16,13 @@ export interface YahooStockData {
   alertType?: 'above' | 'below';
 }
 
-export class StockPulseAPI {
-  private baseUrl: string;
+export class PulseTraderAPI {
   private token: string | null;
+  private baseUrl: string;
 
   constructor() {
+    this.token = localStorage.getItem('pulsetrader_token');
     this.baseUrl = 'http://localhost:3001/api';
-    this.token = localStorage.getItem('stockpulse_token');
   }
 
   private async request(endpoint: string, options: RequestInit = {}) {
@@ -63,7 +63,7 @@ export class StockPulseAPI {
 
   setToken(token: string) {
     this.token = token;
-    localStorage.setItem('stockpulse_token', token);
+    localStorage.setItem('pulsetrader_token', token);
   }
 
   getToken(): string | null {

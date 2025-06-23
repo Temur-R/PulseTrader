@@ -1,51 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { StockPulseAPI } from './services/api';
+import { PulseTraderAPI } from './services/api';
 import { Dashboard } from './components/Dashboard';
 import AuthPages from './components/AuthPages';
 import { Homepage } from './components/Homepage';
 import { Navigation } from './components/Navigation';
 import PricingPage from './components/Pricing';
+import { FirebaseProvider, useFirebase } from './contexts/FirebaseContext';
 
-type Page = 'home' | 'auth' | 'dashboard' | 'pricing';
+type Page = 'home' | 'signin' | 'signup' | 'dashboard' | 'pricing';
 
 // Create a single API instance outside the component to ensure it's not recreated
-const api = new StockPulseAPI();
+const api = new PulseTraderAPI();
 
-export const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+const AppContent: React.FC = () => {
+  const { user, loading } = useFirebase();
   const [currentPage, setCurrentPage] = useState<Page>('home');
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      const token = localStorage.getItem('stockpulse_token');
-      if (token) {
-        try {
-          api.setToken(token);
-          // Verify the token is valid by making a test request
-          await api.getUserProfile();
-          setIsAuthenticated(true);
-          setCurrentPage('dashboard');
-        } catch (error) {
-          console.error('Token validation failed:', error);
-          localStorage.removeItem('stockpulse_token');
-          api.setToken('');
-          setIsAuthenticated(false);
-          setCurrentPage('home');
-        }
-      }
-      setIsLoading(false);
-    };
-
-    initializeAuth();
-  }, []);
+    if (user) {
+      setCurrentPage('dashboard');
+    }
+  }, [user]);
 
   const handleSignIn = () => {
-    setCurrentPage('auth');
+    setCurrentPage('signin');
   };
 
   const handleGetStarted = () => {
-    setCurrentPage('auth');
+    setCurrentPage('signup');
   };
 
   const handleHome = () => {
@@ -53,10 +35,10 @@ export const App: React.FC = () => {
   };
 
   const handleDashboard = () => {
-    if (isAuthenticated) {
+    if (user) {
       setCurrentPage('dashboard');
     } else {
-      setCurrentPage('auth');
+      setCurrentPage('signin');
     }
   };
 
@@ -64,21 +46,12 @@ export const App: React.FC = () => {
     setCurrentPage('pricing');
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('stockpulse_token');
-    api.setToken('');
-    setIsAuthenticated(false);
-    setCurrentPage('home');
-  };
-
   const handleAuthSuccess = (token: string) => {
     api.setToken(token);
-    localStorage.setItem('stockpulse_token', token);
-    setIsAuthenticated(true);
     setCurrentPage('dashboard');
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-white">Loading...</div>
@@ -89,11 +62,12 @@ export const App: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return isAuthenticated ? <Dashboard api={api} /> : <AuthPages onAuthSuccess={handleAuthSuccess} />;
-      case 'auth':
-        return <AuthPages onAuthSuccess={handleAuthSuccess} />;
+        return user ? <Dashboard api={api} /> : <AuthPages onAuthSuccess={handleAuthSuccess} initialMode="signin" />;
+      case 'signin':
+      case 'signup':
+        return <AuthPages onAuthSuccess={handleAuthSuccess} initialMode={currentPage === 'signin' ? 'signin' : 'signup'} />;
       case 'pricing':
-        return <PricingPage />;
+        return <PricingPage onGetStarted={handleGetStarted} />;
       case 'home':
       default:
         return (
@@ -108,15 +82,27 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-900">
       <Navigation
-        isAuthenticated={isAuthenticated}
+        isAuthenticated={!!user}
         onSignIn={handleSignIn}
         onGetStarted={handleGetStarted}
         onHome={handleHome}
         onDashboard={handleDashboard}
-        onLogout={handleLogout}
+        onLogout={() => {
+          localStorage.removeItem('pulsetrader_token');
+          api.setToken('');
+          setCurrentPage('home');
+        }}
         onPricing={handlePricing}
       />
       {renderPage()}
     </div>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
+    <FirebaseProvider>
+      <AppContent />
+    </FirebaseProvider>
   );
 }; 

@@ -1,12 +1,12 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, X } from 'lucide-react';
 import { WatchlistItem } from '../types';
-import { StockPulseAPI } from '../services/api';
+import { PulseTraderAPI } from '../services/api';
 
 interface EnhancedStockCardProps {
   stock: WatchlistItem;
   onRemove: (symbol: string) => void;
-  api: StockPulseAPI;
+  api: PulseTraderAPI;
 }
 
 export const EnhancedStockCard: React.FC<EnhancedStockCardProps> = ({ stock, onRemove }) => {

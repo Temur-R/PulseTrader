@@ -1,4 +1,7 @@
 {
+  "name": "pulsetrader-backend",
+  "version": "1.0.0",
+  "description": "Backend server for PulseTrader - Real-time stock monitoring and alerts",
   "dependencies": {
     "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
@@ -9,5 +12,6 @@
     "nodemon": "^3.1.10",
     "ws": "^8.18.2",
     "yahoo-finance2": "^2.13.3"
-  }
+  },
+  "author": "PulseTrader Team"
 }

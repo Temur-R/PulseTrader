@@ -1,13 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { TrendingUp, Menu, X, LogOut, Settings, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { TrendingUp, Menu, X } from 'lucide-react';
 
 interface NavigationProps {
   isAuthenticated: boolean;
   onSignIn: () => void;
   onGetStarted: () => void;
   onHome: () => void;
-  onDashboard?: () => void;
-  onLogout?: () => void;
+  onDashboard: () => void;
+  onLogout: () => void;
   onPricing: () => void;
 }
 
@@ -20,171 +20,178 @@ export const Navigation: React.FC<NavigationProps> = ({
   onLogout,
   onPricing
 }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const settingsRef = useRef<HTMLDivElement>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Close mobile menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
-        setIsSettingsOpen(false);
+      const target = event.target as HTMLElement;
+      if (isMobileMenuOpen && !target.closest('.mobile-menu') && !target.closest('.menu-button')) {
+        setIsMobileMenuOpen(false);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMobileMenuOpen]);
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const handleMobileAction = (action: () => void) => {
+    action();
+    setIsMobileMenuOpen(false);
+  };
 
   return (
-    <nav className="bg-slate-900/95 backdrop-blur-sm border-b border-cyan-500/20 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-center justify-between h-16">
-          <button
-            onClick={onHome}
-            className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
-          >
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-white">StockPulse</span>
-          </button>
-          
-          {/* Desktop Menu */}
-          <div className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-gray-300 hover:text-cyan-400 transition-colors">Features</a>
-            <button onClick={onPricing} className="text-gray-300 hover:text-cyan-400 transition-colors">Pricing</button>
-            <a href="#testimonials" className="text-gray-300 hover:text-cyan-400 transition-colors">Reviews</a>
-            
-            {isAuthenticated ? (
-              <>
+    <>
+      <nav className="bg-slate-900 border-b border-cyan-500/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex">
+              <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={onHome}>
+                <TrendingUp className="h-8 w-8 text-cyan-400" />
+                <span className="ml-2 text-xl font-bold text-white">PulseTrader</span>
+              </div>
+              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+                <button
+                  onClick={onHome}
+                  className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Home
+                </button>
                 <button
                   onClick={onDashboard}
-                  className="text-gray-300 hover:text-cyan-400 transition-colors"
+                  className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
                 >
                   Dashboard
                 </button>
-                <div className="relative" ref={settingsRef}>
-                  <button
-                    onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                    className="flex items-center space-x-2 text-gray-300 hover:text-cyan-400 transition-colors"
-                  >
-                    <Settings className="w-5 h-5" />
-                  </button>
-                  
-                  {/* Settings Dropdown */}
-                  {isSettingsOpen && (
-                    <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-slate-800 ring-1 ring-black ring-opacity-5">
-                      <div className="py-1" role="menu" aria-orientation="vertical">
-                        <button
-                          className="flex items-center w-full px-4 py-2 text-sm text-gray-300 hover:bg-slate-700 hover:text-cyan-400"
-                          role="menuitem"
-                          onClick={() => {
-                            setIsSettingsOpen(false);
-                            // Add profile handler here when implemented
-                          }}
-                        >
-                          <User className="w-4 h-4 mr-2" />
-                          Profile
-                        </button>
-                        <button
-                          className="flex items-center w-full px-4 py-2 text-sm text-gray-300 hover:bg-slate-700 hover:text-red-400"
-                          role="menuitem"
-                          onClick={() => {
-                            setIsSettingsOpen(false);
-                            onLogout?.();
-                          }}
-                        >
-                          <LogOut className="w-4 h-4 mr-2" />
-                          Logout
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                <button onClick={onSignIn} className="text-gray-300 hover:text-white transition-colors">
-                  Sign In
-                </button>
                 <button
-                  onClick={onGetStarted}
-                  className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-6 py-2 rounded-lg transition-all duration-200 transform hover:scale-105"
+                  onClick={onPricing}
+                  className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  Get Started
+                  Pricing
                 </button>
-              </>
-            )}
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button 
-            className="md:hidden text-white"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden bg-slate-800 border-t border-cyan-500/20">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              <a href="#features" className="block px-3 py-2 text-gray-300 hover:text-cyan-400">Features</a>
-              <button onClick={onPricing} className="block w-full text-left px-3 py-2 text-gray-300 hover:text-cyan-400">Pricing</button>
-              <a href="#testimonials" className="block px-3 py-2 text-gray-300 hover:text-cyan-400">Reviews</a>
-              
+              </div>
+            </div>
+            <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-4">
               {isAuthenticated ? (
-                <>
-                  <button
-                    onClick={onDashboard}
-                    className="block w-full text-left px-3 py-2 text-gray-300 hover:text-cyan-400"
-                  >
-                    Dashboard
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      // Add profile handler here when implemented
-                    }}
-                    className="block w-full text-left px-3 py-2 text-gray-300 hover:text-cyan-400"
-                  >
-                    <User className="w-4 h-4 inline mr-2" />
-                    Profile
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      onLogout?.();
-                    }}
-                    className="block w-full text-left px-3 py-2 text-gray-300 hover:text-red-400"
-                  >
-                    <LogOut className="w-4 h-4 inline mr-2" />
-                    Logout
-                  </button>
-                </>
+                <button
+                  onClick={onLogout}
+                  className="px-4 py-2 border border-cyan-500/20 text-sm font-medium rounded-lg text-white bg-transparent hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transition-all duration-200"
+                >
+                  Sign Out
+                </button>
               ) : (
                 <>
                   <button
                     onClick={onSignIn}
-                    className="block w-full text-left px-3 py-2 text-gray-300 hover:text-white"
+                    className="px-4 py-2 border border-cyan-500/20 text-sm font-medium rounded-lg text-white bg-transparent hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transition-all duration-200"
                   >
                     Sign In
                   </button>
                   <button
                     onClick={onGetStarted}
-                    className="block w-full mt-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-3 py-2 rounded-lg"
+                    className="px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transition-all duration-200"
                   >
                     Get Started
                   </button>
                 </>
               )}
             </div>
+            
+            {/* Mobile menu button */}
+            <div className="flex items-center sm:hidden">
+              <button
+                onClick={toggleMobileMenu}
+                className="menu-button inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-cyan-500"
+              >
+                <span className="sr-only">Open main menu</span>
+                {isMobileMenuOpen ? (
+                  <X className="block h-6 w-6" aria-hidden="true" />
+                ) : (
+                  <Menu className="block h-6 w-6" aria-hidden="true" />
+                )}
+              </button>
+            </div>
           </div>
-        )}
+        </div>
+      </nav>
+
+      {/* Mobile menu overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity sm:hidden" />
+      )}
+
+      {/* Mobile menu drawer */}
+      <div
+        className={`mobile-menu fixed top-0 right-0 h-full w-64 bg-slate-900 border-l border-cyan-500/20 transform transition-transform duration-300 ease-in-out z-50 sm:hidden ${
+          isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-cyan-500/20">
+          <div className="flex items-center">
+            <TrendingUp className="h-8 w-8 text-cyan-400" />
+            <span className="ml-2 text-lg font-bold text-white">PulseTrader</span>
+          </div>
+          <button
+            onClick={toggleMobileMenu}
+            className="p-2 rounded-md text-gray-400 hover:text-white hover:bg-slate-800 focus:outline-none"
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+        
+        <div className="px-2 py-4">
+          <div className="space-y-1">
+            <button
+              onClick={() => handleMobileAction(onHome)}
+              className="w-full text-left text-gray-300 hover:text-white hover:bg-slate-800 px-4 py-3 rounded-md text-base font-medium flex items-center"
+            >
+              Home
+            </button>
+            <button
+              onClick={() => handleMobileAction(onDashboard)}
+              className="w-full text-left text-gray-300 hover:text-white hover:bg-slate-800 px-4 py-3 rounded-md text-base font-medium flex items-center"
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={() => handleMobileAction(onPricing)}
+              className="w-full text-left text-gray-300 hover:text-white hover:bg-slate-800 px-4 py-3 rounded-md text-base font-medium flex items-center"
+            >
+              Pricing
+            </button>
+          </div>
+
+          <div className="mt-6 pt-6 border-t border-cyan-500/20">
+            {isAuthenticated ? (
+              <button
+                onClick={() => handleMobileAction(onLogout)}
+                className="w-full text-left text-gray-300 hover:text-white hover:bg-slate-800 px-4 py-3 rounded-md text-base font-medium flex items-center"
+              >
+                Sign Out
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleMobileAction(onSignIn)}
+                  className="w-full text-left text-gray-300 hover:text-white hover:bg-slate-800 px-4 py-3 rounded-md text-base font-medium flex items-center"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => handleMobileAction(onGetStarted)}
+                  className="w-full text-left text-gray-300 hover:text-white hover:bg-slate-800 px-4 py-3 rounded-md text-base font-medium flex items-center"
+                >
+                  Get Started
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       </div>
-    </nav>
+    </>
   );
 };

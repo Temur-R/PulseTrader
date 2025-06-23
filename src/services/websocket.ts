@@ -1,6 +1,6 @@
 import { WebSocketMessage } from '../types';
 
-export class StockPulseWebSocket {
+export class PulseTraderWebSocket {
   private ws: WebSocket | null;
   private token: string;
   private onMessage: (data: WebSocketMessage) => void;

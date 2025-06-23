@@ -197,8 +197,12 @@ const FAQ: React.FC = () => {
   );
 };
 
+interface PricingPageProps {
+  onGetStarted: () => void;
+}
+
 // Main Pricing Page Component
-const PricingPage: React.FC = () => {
+const PricingPage: React.FC<PricingPageProps> = ({ onGetStarted }) => {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
 
   const plans: Plan[] = [

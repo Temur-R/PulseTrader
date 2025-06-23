@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { TrendingUp, Shield, Zap, Users, Star, ArrowRight, Play, Bell } from 'lucide-react';
+import React from 'react';
+import { TrendingUp, ArrowRight, Bell, Zap, Shield, Star } from 'lucide-react';
 
 interface HomepageProps {
   onSignIn: () => void;
@@ -7,62 +7,30 @@ interface HomepageProps {
 }
 
 export const Homepage: React.FC<HomepageProps> = ({ onSignIn, onGetStarted }) => {
-  const [animatedNumbers, setAnimatedNumbers] = useState({ users: 0, alerts: 0, stocks: 0 });
-
-  // Animate numbers on load
-  useEffect(() => {
-    const targetNumbers = {
-      users: 10000,
-      alerts: 50000,
-      stocks: 5000
-    };
-
-    const duration = 2000; // Animation duration in milliseconds
-    const steps = 60; // Number of steps in the animation
-    const interval = duration / steps;
-
-    const incrementValues = {
-      users: targetNumbers.users / steps,
-      alerts: targetNumbers.alerts / steps,
-      stocks: targetNumbers.stocks / steps
-    };
-
-    let currentStep = 0;
-
-    const timer = setInterval(() => {
-      if (currentStep < steps) {
-        setAnimatedNumbers(prev => ({
-          users: Math.min(Math.round(prev.users + incrementValues.users), targetNumbers.users),
-          alerts: Math.min(Math.round(prev.alerts + incrementValues.alerts), targetNumbers.alerts),
-          stocks: Math.min(Math.round(prev.stocks + incrementValues.stocks), targetNumbers.stocks)
-        }));
-        currentStep++;
-      } else {
-        clearInterval(timer);
-      }
-    }, interval);
-
-    return () => clearInterval(timer);
-  }, []);
+  const animatedNumbers = {
+    users: 10000,
+    alerts: 500000,
+    stocks: 5000
+  };
 
   const testimonials = [
     {
-      name: "Sarah Chen",
+      name: "Sarah Johnson",
       role: "Day Trader",
-      content: "StockPulse has completely transformed how I monitor my portfolio. The instant alerts have saved me thousands.",
-      rating: 5
+      rating: 5,
+      content: "StockPulse has completely transformed how I monitor my investments. The real-time alerts are a game-changer."
     },
     {
-      name: "Michael Rodriguez",
-      role: "Investment Advisor",
-      content: "My clients love the clean interface and reliable notifications. It's become an essential tool in our workflow.",
-      rating: 5
+      name: "Michael Chen",
+      role: "Investment Analyst",
+      rating: 5,
+      content: "The most reliable stock monitoring tool I've used. The accuracy and speed of alerts are exceptional."
     },
     {
-      name: "Emily Johnson",
-      role: "Retail Investor",
-      content: "Finally, a stock app that doesn't overwhelm me with features I don't need. Simple, powerful, perfect.",
-      rating: 5
+      name: "Emily Rodriguez",
+      role: "Portfolio Manager",
+      rating: 5,
+      content: "Essential tool for any serious investor. The customization options and user interface are outstanding."
     }
   ];
 
@@ -165,7 +133,7 @@ export const Homepage: React.FC<HomepageProps> = ({ onSignIn, onGetStarted }) =>
               Loved by <span className="text-cyan-400">Traders</span>
             </h2>
             <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              Join thousands of satisfied traders who trust StockPulse for their market monitoring needs.
+              Join thousands of satisfied traders who trust PulseTrader for their market monitoring needs.
             </p>
           </div>
 
@@ -196,7 +164,7 @@ export const Homepage: React.FC<HomepageProps> = ({ onSignIn, onGetStarted }) =>
               Ready to Transform Your Trading?
             </h2>
             <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
-              Join StockPulse today and experience the power of intelligent stock monitoring.
+              Join PulseTrader today and experience the power of intelligent stock monitoring.
             </p>
             <button onClick={onGetStarted} className="bg-white text-blue-600 px-8 py-4 rounded-xl text-lg font-semibold transition-all duration-200 transform hover:scale-105 hover:bg-gray-100">
               Get Started Now
@@ -209,15 +177,15 @@ export const Homepage: React.FC<HomepageProps> = ({ onSignIn, onGetStarted }) =>
       <footer className="bg-slate-900 border-t border-cyan-500/20 py-8 mt-8">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between">
           <div className="mb-4 md:mb-0 flex items-center space-x-2">
-            <TrendingUp className="w-6 h-6 text-cyan-400" />
-            <span className="text-white font-bold text-lg">StockPulse</span>
+            <TrendingUp className="h-8 w-8 text-cyan-400" />
+            <span className="text-white font-bold text-lg">PulseTrader</span>
           </div>
           <div className="flex space-x-6 mb-4 md:mb-0">
             <a href="#top" className="text-gray-400 hover:text-cyan-400 transition-colors">Features</a>
             <a href="#pricing" className="text-gray-400 hover:text-cyan-400 transition-colors">Pricing</a>
           </div>
           <div className="text-gray-500 text-sm text-center md:text-right">
-            &copy; {new Date().getFullYear()} StockPulse™. All rights reserved.
+            &copy; {new Date().getFullYear()} PulseTrader™. All rights reserved.
           </div>
         </div>
       </footer>
