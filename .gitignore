@@ -18,7 +18,6 @@
 .env.test.local
 .env.production.local
 
-src/services/firebase.ts
 backend/serviceAccountKey.json
 
 npm-debug.log*
