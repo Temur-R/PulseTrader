@@ -3,9 +3,12 @@ from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
-@app.route('/search')
+@app.route('/api/search')
 def search_stocks():
-    query = request.args.get('q', '')
+    query = request.args.get('q', '').upper()
+    # Add CORS headers
+    response = jsonify({'error': 'No results found'})
+    response.headers.add('Access-Control-Allow-Origin', '*')
     try:
         results = []
         tickers = yf.Tickers(query)

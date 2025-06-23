@@ -75,19 +75,19 @@ const axios = require('axios');
 
 app.get('/api/stocks/search', authenticateToken, async (req, res) => {
   try {
-    const response = await axios.get('http://localhost:5000/search', {
+    const response = await axios.get('http://localhost:5000/api/search', {
       params: { q: req.query.q }
     });
     
-    const results = response.data
-      .filter(q => q.quoteType === 'EQUITY' && !q.symbol.includes('.'))
-      .map(q => ({
-        symbol: q.symbol,
-        name: q.longname || q.shortname,
-        price: q.regularMarketPrice,
-        change: q.regularMarketChange,
-        exchange: q.exchange
-      }));
+    const results = response.data.filter(stock => 
+      stock.symbol && stock.price !== undefined
+    ).map(stock => ({
+      symbol: stock.symbol,
+      name: stock.name,
+      price: stock.price,
+      change: stock.change,
+      exchange: stock.exchange
+    }));
       
     res.json(results);
   } catch (error) {
