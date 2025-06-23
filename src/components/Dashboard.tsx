@@ -107,24 +107,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
     }
   };
 
-  const addToWatchlist = async (symbol: string) => {
+  const addToWatchlist = async (result: YahooStockData) => {
     try {
-      console.log('Adding to watchlist:', symbol);
-      const stockData = await api.getStockData(symbol);
-      console.log('Stock data received:', stockData);
-      
-      if (!stockData || !stockData.price) {
-        console.error('Invalid stock data received:', stockData);
+      if (!result?.symbol || !result.price) {
+        console.error('Invalid stock result:', result);
         return;
       }
 
-      // Set default target price to 10% above current price
-      const targetPrice = stockData.price * 1.1;
-      // Set default alert type to 'above'
+      // Use actual price from search result
+      const targetPrice = result.price * 1.1;
       const alertType = 'above';
       
       console.log('Calling addToWatchlist with:', { symbol, targetPrice, alertType });
-      await api.addToWatchlist(symbol, targetPrice, alertType);
+      await api.addToWatchlist(result.symbol, targetPrice, alertType);
       console.log('Successfully added to watchlist, fetching updated watchlist');
       
       // Fetch the updated watchlist

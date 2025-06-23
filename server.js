@@ -75,11 +75,12 @@ const axios = require('axios');
 
 app.get('/api/stocks/search', authenticateToken, async (req, res) => {
   try {
-    const response = await axios.get(`https://query1.finance.yahoo.com/v6/finance/quote`, {
+    const response = await axios.get(`https://query1.finance.yahoo.com/v1/finance/search`, {
       params: {
-        symbols: req.query.q,
+        q: req.query.q,
         lang: 'en-US',
-        region: 'US'
+        region: 'US',
+        quotesCount: 10
       },
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
@@ -88,13 +89,14 @@ app.get('/api/stocks/search', authenticateToken, async (req, res) => {
       }
     });
     
-    const results = response.data.quoteResponse.result
-      .filter(q => q.quoteType === 'EQUITY')
+    const results = response.data.quotes
+      .filter(q => q.quoteType === 'EQUITY' && !q.symbol.includes('.'))
       .map(q => ({
         symbol: q.symbol,
-        name: q.longName || q.shortName,
+        name: q.longname || q.shortname,
         price: q.regularMarketPrice,
-        change: q.regularMarketChange
+        change: q.regularMarketChange,
+        exchange: q.exchange
       }));
       
     res.json(results);
@@ -140,14 +142,18 @@ app.get('/api/watchlist', authenticateToken, (req, res) => {
 });
 
 app.post('/api/watchlist', authenticateToken, (req, res) => {
-  const { symbol, targetPrice } = req.body;
-  if (!stocks.has(symbol)) {
-    return res.status(404).json({ error: 'Stock not found' });
-  }
-
+  const { symbol, targetPrice, alertType } = req.body;
+  
   const userWatchlist = watchlists.get(req.user.email) || [];
-  if (!userWatchlist.includes(symbol)) {
-    userWatchlist.push(symbol);
+  if (!userWatchlist.some(item => item.symbol === symbol)) {
+    userWatchlist.push({
+      symbol,
+      targetPrice,
+      alertType,
+      name: req.body.name || symbol,
+      price: req.body.price || 0,
+      change: req.body.change || 0
+    });
     watchlists.set(req.user.email, userWatchlist);
   }
 
