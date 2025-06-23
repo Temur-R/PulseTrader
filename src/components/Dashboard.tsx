@@ -130,12 +130,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
       const validWatchlistData = watchlistData.map(item => ({
         symbol: item.symbol,
         name: item.name || item.symbol,
-        price: parseFloat(item.price) || 0,
-        change: parseFloat(item.change) || 0,
-        changePercent: parseFloat(item.changePercent) || 0,
-        volume: parseFloat(item.volume) || 0,
-        marketCap: parseFloat(item.marketCap) || 0,
-        targetPrice: parseFloat(item.targetPrice) || parseFloat(item.price) * 1.1 || 0,
+        price: Number(item.price) || 0,
+        change: Number(item.change) || 0,
+        changePercent: Number(item.changePercent) || 0,
+        volume: Number(item.volume ?? 0) || 0,
+        marketCap: Number(item.marketCap ?? 0) || 0,
+        targetPrice: Number(item.targetPrice) || Number(item.price) * 1.1 || 0,
         alertType: item.alertType || 'above'
       }));
       
