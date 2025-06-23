@@ -21,7 +21,7 @@ const stocks = new Map([
 const watchlists = new Map();
 const notifications = new Map();
 
-const JWT_SECRET = 'your-secret-key'; // In production, use environment variable
+const JWT_SECRET = process.env.JWT_SECRET;
 
 app.use(cors());
 app.use(express.json());
@@ -145,6 +145,7 @@ app.delete('/api/watchlist/:symbol', authenticateToken, (req, res) => {
 
 // WebSocket connection handling
 wss.on('connection', (ws) => {
+  ws.on('error', console.error);
   console.log('Client connected');
 
   // Send periodic updates
