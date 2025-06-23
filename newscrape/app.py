@@ -13,14 +13,17 @@ firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 import os
+from dotenv import load_dotenv
+ # Load environment variables from .env file
+load_dotenv()
 
-EVENT_API_KEY = os.environ.get('MY_API_KEY')
+EVENT_API_KEY = os.environ.get('api_key')
 EVENT_API_URL = "https://eventregistry.org/api/v1/article/getArticles"
 
 # === Helper: Scrape full body from article URL ===
 def scrape_article_body(url):
     try:
-        res = requests.get(url, timeout=5)
+        res = requests.get(url)
         soup = BeautifulSoup(res.text, "html.parser")
         paragraphs = soup.find_all("p")
         text = " ".join(p.get_text() for p in paragraphs)
@@ -53,8 +56,8 @@ def run_news_pipeline():
                 "lang": "eng",
                 "sortBy": "date",
                 "action": "getArticles",
-                "dateStart": one_hour_ago.strftime('%Y-%m-%dT%H:%M'),
-                "dateEnd": now.strftime('%Y-%m-%dT%H:%M')
+                "dateStart": one_hour_ago.strftime('%Y-%m-%d'),
+                "dateEnd": now.strftime('%Y-%m-%d')
             }
 
             res = requests.post(EVENT_API_URL, json=payload)
