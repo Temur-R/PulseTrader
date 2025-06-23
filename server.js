@@ -71,14 +71,30 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 // Stock routes
-app.get('/api/stocks/search', authenticateToken, (req, res) => {
-  const query = req.query.q.toLowerCase();
-  const results = Array.from(stocks.values())
-    .filter(stock => 
-      stock.symbol.toLowerCase().includes(query) || 
-      stock.name.toLowerCase().includes(query)
-    );
-  res.json(results);
+const axios = require('axios');
+
+app.get('/api/stocks/search', authenticateToken, async (req, res) => {
+  try {
+    const response = await axios.get(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(req.query.q)}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
+      }
+    });
+    
+    const results = response.data.quotes
+      .filter(q => q.quoteType === 'EQUITY')
+      .map(q => ({
+        symbol: q.symbol,
+        name: q.longname || q.shortname,
+        price: q.regularMarketPrice,
+        change: q.regularMarketChange
+      }));
+      
+    res.json(results);
+  } catch (error) {
+    console.error('Yahoo Finance API error:', error);
+    res.status(500).json({ error: 'Failed to fetch stock data' });
+  }
 });
 
 app.get('/api/stocks/:symbol', authenticateToken, (req, res) => {

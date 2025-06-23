@@ -207,7 +207,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
                     <div className="text-sm text-gray-400">{result.name}</div>
                     <div className="text-sm">
                       <span className={result.change >= 0 ? 'text-green-400' : 'text-red-400'}>
-                        ${formatNumber(result.price)} ({formatNumber(result.changePercent)}%)
+                        ${result.price?.toFixed(2)} ({result.change >= 0 ? '+' : ''}{result.change?.toFixed(2)})
                       </span>
                     </div>
                   </button>
