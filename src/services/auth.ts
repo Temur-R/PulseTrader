@@ -17,10 +17,22 @@ export interface AuthUser {
 
 export const registerWithEmail = async (email: string, password: string) => {
   try {
+    if (!email || !password) {
+      throw new Error('Email and password are required');
+    }
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     return userCredential.user;
-  } catch (error) {
-    throw error;
+  } catch (error: any) {
+    // Provide more descriptive error messages
+    if (error.code === 'auth/email-already-in-use') {
+      throw new Error('This email is already in use. Please use a different email or log in.');
+    } else if (error.code === 'auth/invalid-email') {
+      throw new Error('The email address is not valid.');
+    } else if (error.code === 'auth/weak-password') {
+      throw new Error('Password should be at least 6 characters.');
+    } else {
+      throw new Error(error.message || 'Registration failed.');
+    }
   }
 };
 
@@ -71,4 +83,4 @@ export const getCurrentUser = (): Promise<AuthUser | null> => {
       reject
     );
   });
-}; 
+};

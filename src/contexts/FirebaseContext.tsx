@@ -10,18 +10,22 @@ import {
   updateProfile,
   User
 } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDqnCXlzwJXPGKDXKPzxiVPXqZgQQYqwxw",
-  authDomain: "stockpulse-f3c7c.firebaseapp.com",
-  projectId: "stockpulse-f3c7c",
-  storageBucket: "stockpulse-f3c7c.appspot.com",
-  messagingSenderId: "368066262321",
-  appId: "1:368066262321:web:c0c0c0c0c0c0c0c0c0c0c0"
+  apiKey: "AIzaSyCKFwGb99DhNy-1dNPEq-PdOkdbau4XluU",
+  authDomain: "pulsetrader-3505c.firebaseapp.com",
+  projectId: "pulsetrader-3505c",
+  storageBucket: "pulsetrader-3505c.firebasestorage.app",
+  messagingSenderId: "684793998943",
+  appId: "1:684793998943:web:7892e3d72c94b624e935ea",
+  measurementId: "G-ZZLWHGSSFP"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
 
 interface FirebaseContextType {
   user: User | null;
@@ -56,8 +60,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const signInWithGoogle = async (): Promise<string> => {
-    const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, googleProvider);
     const token = await result.user.getIdToken();
     return token;
   };
@@ -96,4 +99,6 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       {children}
     </FirebaseContext.Provider>
   );
-}; 
+};
+
+export { auth, db, googleProvider };

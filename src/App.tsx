@@ -13,7 +13,7 @@ type Page = 'home' | 'signin' | 'signup' | 'dashboard' | 'pricing';
 const api = new PulseTraderAPI();
 
 const AppContent: React.FC = () => {
-  const { user, loading } = useFirebase();
+  const { user, loading, signOutUser } = useFirebase();
   const [currentPage, setCurrentPage] = useState<Page>('home');
 
   useEffect(() => {
@@ -87,7 +87,8 @@ const AppContent: React.FC = () => {
         onGetStarted={handleGetStarted}
         onHome={handleHome}
         onDashboard={handleDashboard}
-        onLogout={() => {
+        onLogout={async () => {
+          await signOutUser();
           localStorage.removeItem('pulsetrader_token');
           api.setToken('');
           setCurrentPage('home');
@@ -105,4 +106,4 @@ export const App: React.FC = () => {
       <AppContent />
     </FirebaseProvider>
   );
-}; 
+};

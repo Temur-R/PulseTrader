@@ -21,6 +21,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   onPricing
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showSignOutPopup, setShowSignOutPopup] = useState(false);
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -44,8 +45,20 @@ export const Navigation: React.FC<NavigationProps> = ({
     setIsMobileMenuOpen(false);
   };
 
+  const handleLogout = async () => {
+    await onLogout();
+    setShowSignOutPopup(true);
+    setTimeout(() => setShowSignOutPopup(false), 2000);
+  };
+
   return (
     <>
+      {/* Sign Out Popup */}
+      {showSignOutPopup && (
+        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg transition-all">
+          Successfully signed out
+        </div>
+      )}
       <nav className="bg-slate-900 border-b border-cyan-500/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
@@ -78,7 +91,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-4">
               {isAuthenticated ? (
                 <button
-                  onClick={onLogout}
+                  onClick={handleLogout}
                   className="px-4 py-2 border border-cyan-500/20 text-sm font-medium rounded-lg text-white bg-transparent hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transition-all duration-200"
                 >
                   Sign Out
