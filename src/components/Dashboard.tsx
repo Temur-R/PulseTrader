@@ -187,16 +187,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
             />
             
             {searchResults.length > 0 && (
-              <div className="absolute top-full mt-2 w-full bg-slate-800 border border-cyan-500/20 rounded-lg shadow-lg z-50">
+              <div className="absolute top-full mt-2 w-full bg-slate-800 border border-cyan-500/20 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
                 {searchResults.map(result => (
                   <button
                     key={result.symbol}
                     onClick={() => addToWatchlist(result.symbol)}
-                    className="w-full px-4 py-2 text-left hover:bg-slate-700/50 text-white"
+                    className="w-full px-3 py-1.5 text-left hover:bg-slate-700/50 text-white text-sm"
                   >
-                    <div className="font-semibold">{result.symbol}</div>
-                    <div className="text-sm text-gray-400">{result.name}</div>
-                    <div className="text-sm">
+                    <div className="font-semibold truncate">{result.symbol}</div>
+                    <div className="text-xs text-gray-400 truncate">{result.name}</div>
+                    <div className="text-xs">
                       <span className={result.change >= 0 ? 'text-green-400' : 'text-red-400'}>
                         ${formatNumber(result.price)} ({formatNumber(result.changePercent)}%)
                       </span>
@@ -322,4 +322,4 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
       </div>
     </div>
   );
-}; 
+};

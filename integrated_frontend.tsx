@@ -301,10 +301,10 @@ const EnhancedStockCard = ({ stock, onRemove, api }) => {
 
 // Main Dashboard Component
 const Dashboard = ({ api }) => {
-  const [stocks, setStocks] = useState([]);
+  const [stocks, setStocks] = useState<Stock[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [notifications, setNotifications] = useState([]);
+  const [searchResults, setSearchResults] = useState<StockSearchResult[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -315,8 +315,19 @@ const Dashboard = ({ api }) => {
           api.getWatchlist(),
           api.getNotifications()
         ]);
-        setStocks(watchlistData);
-        setNotifications(notificationsData);
+        // Defensive: Ensure watchlistData is always an array of objects with required fields
+        const safeStocks = Array.isArray(watchlistData)
+          ? watchlistData.map(item => ({
+              symbol: item.symbol || '',
+              name: item.name || '',
+              currentPrice: typeof item.currentPrice === 'number' ? item.currentPrice : 0,
+              targetPrice: typeof item.targetPrice === 'number' ? item.targetPrice : 0,
+              change: typeof item.change === 'number' ? item.change : 0,
+              // ...add any other required fields with defaults
+            }))
+          : [];
+        setStocks(safeStocks);
+        setNotifications(Array.isArray(notificationsData) ? notificationsData : []);
       } catch (error) {
         console.error('Failed to load initial data:', error);
       } finally {

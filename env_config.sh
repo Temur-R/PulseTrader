@@ -2,9 +2,6 @@
 PORT=3001
 NODE_ENV=development
 
-# Database
-MONGODB_URI=mongodb://localhost:27017/stockpulse
-
 # JWT Secret
 JWT_SECRET=your-super-secure-jwt-secret-key-here
 

@@ -6,8 +6,18 @@ const cron = require('node-cron');
 const nodemailer = require('nodemailer');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const mongoose = require('mongoose');
+const admin = require('firebase-admin');
 require('dotenv').config();
+
+// Initialize Firebase Admin SDK
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+    // Optionally, specify projectId or other config if needed
+  });
+}
+
+const firestore = admin.firestore();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -16,41 +26,30 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/stockpulse', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+// --- Firestore User Helper Functions ---
+const USERS_COLLECTION = 'users';
 
-// User Schema
-const userSchema = new mongoose.Schema({
-  firstName: String,
-  lastName: String,
-  email: { type: String, unique: true },
-  password: String,
-  watchlist: [{
-    symbol: String,
-    name: String,
-    targetPrice: Number,
-    alertType: { type: String, enum: ['above', 'below'], default: 'above' },
-    isActive: { type: Boolean, default: true },
-    addedAt: { type: Date, default: Date.now }
-  }],
-  notifications: [{
-    id: String,
-    message: String,
-    type: { type: String, enum: ['positive', 'negative', 'warning'] },
-    timestamp: { type: Date, default: Date.now },
-    read: { type: Boolean, default: false }
-  }],
-  settings: {
-    emailNotifications: { type: Boolean, default: true },
-    pushNotifications: { type: Boolean, default: true },
-    alertFrequency: { type: String, enum: ['immediate', 'hourly', 'daily'], default: 'immediate' }
-  }
-}, { timestamps: true });
+async function getUserById(userId) {
+  const userDoc = await firestore.collection(USERS_COLLECTION).doc(userId).get();
+  return userDoc.exists ? { id: userDoc.id, ...userDoc.data() } : null;
+}
 
-const User = mongoose.model('User', userSchema);
+async function getUserByEmail(email) {
+  const snapshot = await firestore.collection(USERS_COLLECTION).where('email', '==', email).limit(1).get();
+  if (snapshot.empty) return null;
+  const doc = snapshot.docs[0];
+  return { id: doc.id, ...doc.data() };
+}
+
+async function updateUser(userId, data) {
+  await firestore.collection(USERS_COLLECTION).doc(userId).update(data);
+}
+
+async function createUser(userData) {
+  const userRef = await firestore.collection(USERS_COLLECTION).add(userData);
+  const userDoc = await userRef.get();
+  return { id: userDoc.id, ...userDoc.data() };
+}
 
 // Stock data cache
 const stockCache = new Map();
@@ -60,7 +59,7 @@ const CACHE_DURATION = 60000; // 1 minute
 const wss = new WebSocket.Server({ port: 8080 });
 
 // Email transporter
-const emailTransporter = nodemailer.createTransporter({
+const emailTransporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
@@ -68,11 +67,11 @@ const emailTransporter = nodemailer.createTransporter({
   }
 });
 
-// Stock data service using Alpha Vantage API
+// Stock data service using Finnhub API
 class StockDataService {
   constructor() {
-    this.apiKey = process.env.ALPHA_VANTAGE_API_KEY;
-    this.baseUrl = 'https://www.alphavantage.co/query';
+    this.apiKey = process.env.FINNHUB_API_KEY;
+    this.baseUrl = 'https://finnhub.io/api/v1';
   }
 
   async getStockPrice(symbol) {
@@ -84,25 +83,25 @@ class StockDataService {
         return cached.data;
       }
 
-      const response = await axios.get(this.baseUrl, {
+      // Finnhub quote endpoint
+      const response = await axios.get(`${this.baseUrl}/quote`, {
         params: {
-          function: 'GLOBAL_QUOTE',
           symbol: symbol,
-          apikey: this.apiKey
+          token: this.apiKey
         }
       });
 
-      const quote = response.data['Global Quote'];
-      if (!quote) {
+      const quote = response.data;
+      if (!quote || quote.c === 0) {
         throw new Error('Stock not found');
       }
 
       const stockData = {
-        symbol: quote['01. symbol'],
-        price: parseFloat(quote['05. price']),
-        change: parseFloat(quote['09. change']),
-        changePercent: parseFloat(quote['10. change percent'].replace('%', '')),
-        volume: parseInt(quote['06. volume']),
+        symbol: symbol.toUpperCase(),
+        price: quote.c,
+        change: quote.d,
+        changePercent: quote.dp,
+        volume: quote.v,
         lastUpdate: new Date()
       };
 
@@ -121,16 +120,18 @@ class StockDataService {
 
   async getStockNews(symbol) {
     try {
-      const response = await axios.get(this.baseUrl, {
+      // Finnhub company-news endpoint (last 7 days)
+      const from = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const to = new Date().toISOString().slice(0, 10);
+      const response = await axios.get(`${this.baseUrl}/company-news`, {
         params: {
-          function: 'NEWS_SENTIMENT',
-          tickers: symbol,
-          apikey: this.apiKey,
-          limit: 5
+          symbol: symbol,
+          from,
+          to,
+          token: this.apiKey
         }
       });
-
-      return response.data.feed || [];
+      return response.data || [];
     } catch (error) {
       console.error(`Error fetching news for ${symbol}:`, error.message);
       return [];
@@ -139,15 +140,21 @@ class StockDataService {
 
   async searchStock(query) {
     try {
-      const response = await axios.get(this.baseUrl, {
+      // Finnhub symbol-search endpoint
+      const response = await axios.get(`${this.baseUrl}/search`, {
         params: {
-          function: 'SYMBOL_SEARCH',
-          keywords: query,
-          apikey: this.apiKey
+          q: query,
+          token: this.apiKey
         }
       });
-
-      return response.data.bestMatches || [];
+      // Return matches in a similar format as before
+      return (response.data.result || []).map(match => ({
+        symbol: match.symbol,
+        name: match.description,
+        type: match.type,
+        region: match.region || '',
+        currency: match.currency || ''
+      }));
     } catch (error) {
       console.error(`Error searching stocks:`, error.message);
       return [];
@@ -211,7 +218,7 @@ Keep the response concise and professional.`;
   }
 }
 
-// Notification Service
+// --- Refactored NotificationService for Firestore ---
 class NotificationService {
   static async sendEmail(to, subject, html) {
     try {
@@ -229,32 +236,22 @@ class NotificationService {
 
   static async createNotification(userId, message, type = 'info') {
     try {
-      const user = await User.findById(userId);
+      const user = await getUserById(userId);
       if (!user) return;
-
       const notification = {
         id: Date.now().toString(),
         message,
         type,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         read: false
       };
-
-      user.notifications.unshift(notification);
-      
-      // Keep only last 50 notifications
-      if (user.notifications.length > 50) {
-        user.notifications = user.notifications.slice(0, 50);
-      }
-
-      await user.save();
-
-      // Send real-time update via WebSocket
+      const notifications = [notification, ...(user.notifications || [])];
+      if (notifications.length > 50) notifications.splice(50);
+      await updateUser(userId, { notifications });
       this.broadcastToUser(userId, {
         type: 'notification',
         data: notification
       });
-
       return notification;
     } catch (error) {
       console.error('Error creating notification:', error.message);
@@ -300,7 +297,7 @@ app.post('/api/auth/register', async (req, res) => {
     const { firstName, lastName, email, password } = req.body;
 
     // Check if user exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await getUserByEmail(email);
     if (existingUser) {
       return res.status(400).json({ error: 'User already exists' });
     }
@@ -309,18 +306,16 @@ app.post('/api/auth/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user
-    const user = new User({
+    const user = await createUser({
       firstName,
       lastName,
       email,
       password: hashedPassword
     });
 
-    await user.save();
-
     // Generate token
     const token = jwt.sign(
-      { userId: user._id, email: user.email },
+      { userId: user.id, email: user.email },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '24h' }
     );
@@ -329,7 +324,7 @@ app.post('/api/auth/register', async (req, res) => {
       message: 'User created successfully',
       token,
       user: {
-        id: user._id,
+        id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email
@@ -345,7 +340,7 @@ app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
 
     // Find user
-    const user = await User.findOne({ email });
+    const user = await getUserByEmail(email);
     if (!user) {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
@@ -358,7 +353,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Generate token
     const token = jwt.sign(
-      { userId: user._id, email: user.email },
+      { userId: user.id, email: user.email },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '24h' }
     );
@@ -367,7 +362,7 @@ app.post('/api/auth/login', async (req, res) => {
       message: 'Login successful',
       token,
       user: {
-        id: user._id,
+        id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email
@@ -423,18 +418,17 @@ app.get('/api/stocks/:symbol/price', async (req, res) => {
 // Watchlist routes
 app.get('/api/watchlist', authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId);
+    const user = await getUserById(req.user.userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-    // Get current prices for all watchlist items
+    const watchlist = user.watchlist || [];
     const watchlistWithPrices = await Promise.all(
-      user.watchlist.map(async (item) => {
+      watchlist.map(async (item) => {
         try {
           const stockData = await stockService.getStockPrice(item.symbol);
           return {
-            ...item.toObject(),
+            ...item,
             currentPrice: stockData.price,
             change: stockData.change,
             changePercent: stockData.changePercent,
@@ -442,7 +436,7 @@ app.get('/api/watchlist', authenticateToken, async (req, res) => {
           };
         } catch (error) {
           return {
-            ...item.toObject(),
+            ...item,
             currentPrice: 0,
             change: 0,
             changePercent: 0,
@@ -451,7 +445,6 @@ app.get('/api/watchlist', authenticateToken, async (req, res) => {
         }
       })
     );
-
     res.json(watchlistWithPrices);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -461,38 +454,28 @@ app.get('/api/watchlist', authenticateToken, async (req, res) => {
 app.post('/api/watchlist', authenticateToken, async (req, res) => {
   try {
     const { symbol, targetPrice, alertType = 'above' } = req.body;
-
-    const user = await User.findById(req.user.userId);
+    const user = await getUserById(req.user.userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-    // Check if stock already in watchlist
-    const existingItem = user.watchlist.find(item => item.symbol === symbol.toUpperCase());
+    const watchlist = user.watchlist || [];
+    const existingItem = watchlist.find(item => item.symbol === symbol.toUpperCase());
     if (existingItem) {
       return res.status(400).json({ error: 'Stock already in watchlist' });
     }
-
-    // Get stock info to validate symbol
     try {
       const stockData = await stockService.getStockPrice(symbol);
-      
-      user.watchlist.push({
+      const newItem = {
         symbol: symbol.toUpperCase(),
         name: `${symbol.toUpperCase()} Corp.`,
         targetPrice: parseFloat(targetPrice),
         alertType,
-        isActive: true
-      });
-
-      await user.save();
-
-      await NotificationService.createNotification(
-        user._id,
-        `Added ${symbol.toUpperCase()} to watchlist with target price $${targetPrice}`,
-        'positive'
-      );
-
+        isActive: true,
+        addedAt: new Date().toISOString()
+      };
+      watchlist.push(newItem);
+      await updateUser(user.id, { watchlist });
+      await NotificationService.createNotification(user.id, `Added ${symbol.toUpperCase()} to watchlist with target price $${targetPrice}`, 'positive');
       res.status(201).json({ message: 'Stock added to watchlist', stock: stockData });
     } catch (error) {
       res.status(400).json({ error: 'Invalid stock symbol' });
@@ -505,21 +488,13 @@ app.post('/api/watchlist', authenticateToken, async (req, res) => {
 app.delete('/api/watchlist/:symbol', authenticateToken, async (req, res) => {
   try {
     const { symbol } = req.params;
-    const user = await User.findById(req.user.userId);
-    
+    const user = await getUserById(req.user.userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-    user.watchlist = user.watchlist.filter(item => item.symbol !== symbol.toUpperCase());
-    await user.save();
-
-    await NotificationService.createNotification(
-      user._id,
-      `Removed ${symbol.toUpperCase()} from watchlist`,
-      'warning'
-    );
-
+    const watchlist = (user.watchlist || []).filter(item => item.symbol !== symbol.toUpperCase());
+    await updateUser(user.id, { watchlist });
+    await NotificationService.createNotification(user.id, `Removed ${symbol.toUpperCase()} from watchlist`, 'warning');
     res.json({ message: 'Stock removed from watchlist' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -529,12 +504,11 @@ app.delete('/api/watchlist/:symbol', authenticateToken, async (req, res) => {
 // Notifications routes
 app.get('/api/notifications', authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId);
+    const user = await getUserById(req.user.userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-    res.json(user.notifications);
+    res.json(user.notifications || []);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -543,18 +517,12 @@ app.get('/api/notifications', authenticateToken, async (req, res) => {
 app.put('/api/notifications/:id/read', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await User.findById(req.user.userId);
-    
+    const user = await getUserById(req.user.userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-    const notification = user.notifications.find(notif => notif.id === id);
-    if (notification) {
-      notification.read = true;
-      await user.save();
-    }
-
+    const notifications = (user.notifications || []).map(notif => notif.id === id ? { ...notif, read: true } : notif);
+    await updateUser(user.id, { notifications });
     res.json({ message: 'Notification marked as read' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -564,15 +532,12 @@ app.put('/api/notifications/:id/read', authenticateToken, async (req, res) => {
 app.delete('/api/notifications/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await User.findById(req.user.userId);
-    
+    const user = await getUserById(req.user.userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-    user.notifications = user.notifications.filter(notif => notif.id !== id);
-    await user.save();
-
+    const notifications = (user.notifications || []).filter(notif => notif.id !== id);
+    await updateUser(user.id, { notifications });
     res.json({ message: 'Notification deleted' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -582,20 +547,18 @@ app.delete('/api/notifications/:id', authenticateToken, async (req, res) => {
 // Price alert checker (runs every minute)
 cron.schedule('* * * * *', async () => {
   try {
-    const users = await User.find({ 'watchlist.0': { $exists: true } });
-    
-    for (const user of users) {
-      for (const watchItem of user.watchlist) {
+    const usersSnapshot = await firestore.collection(USERS_COLLECTION).where('watchlist', '!=', null).get();
+    for (const userDoc of usersSnapshot.docs) {
+      const user = { id: userDoc.id, ...userDoc.data() };
+      const watchlist = user.watchlist || [];
+      for (const watchItem of watchlist) {
         if (!watchItem.isActive) continue;
-
         try {
           const stockData = await stockService.getStockPrice(watchItem.symbol);
           const currentPrice = stockData.price;
           const targetPrice = watchItem.targetPrice;
-          
           let shouldAlert = false;
           let alertMessage = '';
-
           if (watchItem.alertType === 'above' && currentPrice >= targetPrice) {
             shouldAlert = true;
             alertMessage = `${watchItem.symbol} reached $${currentPrice.toFixed(2)} (target: $${targetPrice.toFixed(2)})`;
@@ -603,17 +566,13 @@ cron.schedule('* * * * *', async () => {
             shouldAlert = true;
             alertMessage = `${watchItem.symbol} dropped to $${currentPrice.toFixed(2)} (target: $${targetPrice.toFixed(2)})`;
           }
-
           if (shouldAlert) {
-            // Create notification
             await NotificationService.createNotification(
-              user._id,
+              user.id,
               alertMessage,
               currentPrice >= targetPrice ? 'positive' : 'warning'
             );
-
-            // Send email if enabled
-            if (user.settings.emailNotifications) {
+            if (user.settings && user.settings.emailNotifications) {
               await NotificationService.sendEmail(
                 user.email,
                 `StockPulse Alert: ${watchItem.symbol}`,
