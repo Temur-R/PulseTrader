@@ -108,21 +108,34 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
 
   const addToWatchlist = async (symbol: string) => {
     try {
+      console.log('Adding to watchlist:', symbol);
       const stockData = await api.getStockData(symbol);
+      console.log('Stock data received:', stockData);
+      // Set default target price to 10% above current price
       const targetPrice = stockData.price * 1.1;
-      await api.addToWatchlist(symbol, targetPrice);
+      // Set default alert type to 'above'
+      const alertType = 'above';
+      console.log('Calling addToWatchlist with:', { symbol, targetPrice, alertType });
+      await api.addToWatchlist(symbol, targetPrice, alertType);
+      console.log('Successfully added to watchlist, fetching updated watchlist');
       const watchlistData = await api.getWatchlist();
+      console.log('New watchlist data:', watchlistData);
       // Ensure watchlist items have required properties
       const validWatchlistData = watchlistData.map(item => ({
         ...item,
         targetPrice: item.targetPrice || item.price * 1.1,
         alertType: item.alertType || 'above'
       })) as WatchlistItem[];
+      console.log('Setting stocks with:', validWatchlistData);
       setStocks(validWatchlistData);
       setSearchResults([]);
       setSearchQuery('');
     } catch (error) {
       console.error('Failed to add stock:', error);
+      // Add more detailed error logging
+      if (error instanceof Error) {
+        console.error('Error details:', error.message);
+      }
     }
   };
 

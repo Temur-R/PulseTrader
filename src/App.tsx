@@ -4,8 +4,9 @@ import { Dashboard } from './components/Dashboard';
 import AuthPages from './components/AuthPages';
 import { Homepage } from './components/Homepage';
 import { Navigation } from './components/Navigation';
+import PricingPage from './components/Pricing';
 
-type Page = 'home' | 'auth' | 'dashboard';
+type Page = 'home' | 'auth' | 'dashboard' | 'pricing';
 
 export const App: React.FC = () => {
   const [api] = useState(() => new StockPulseAPI());
@@ -41,6 +42,10 @@ export const App: React.FC = () => {
     }
   };
 
+  const handlePricing = () => {
+    setCurrentPage('pricing');
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('stockpulse_token');
     api.setToken('');
@@ -60,6 +65,8 @@ export const App: React.FC = () => {
           setIsAuthenticated(true);
           setCurrentPage('dashboard');
         }} />;
+      case 'pricing':
+        return <PricingPage />;
       case 'home':
       default:
         return (
@@ -80,6 +87,7 @@ export const App: React.FC = () => {
         onHome={handleHome}
         onDashboard={handleDashboard}
         onLogout={handleLogout}
+        onPricing={handlePricing}
       />
       {renderPage()}
     </div>
