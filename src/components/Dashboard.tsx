@@ -118,7 +118,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
       const targetPrice = result.price * 1.1;
       const alertType = 'above';
       
-      console.log('Calling addToWatchlist with:', { symbol, targetPrice, alertType });
+      console.log('Calling addToWatchlist with:', { symbol: result.symbol, targetPrice, alertType });
       await api.addToWatchlist(result.symbol, targetPrice, alertType);
       console.log('Successfully added to watchlist, fetching updated watchlist');
       
@@ -147,7 +147,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
       setSearchQuery('');
       
       // Show success message
-      console.log('Successfully added', symbol, 'to watchlist');
+      console.log('Successfully added', result.symbol, 'to watchlist');
     } catch (error) {
       console.error('Failed to add stock:', error);
       if (error instanceof Error) {
@@ -195,7 +195,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
                 {searchResults.map(result => (
                   <button
                     key={result.symbol}
-                    onClick={() => addToWatchlist(result.symbol)}
+                    onClick={() => addToWatchlist(result)}
                     className="w-full px-4 py-2 text-left hover:bg-slate-700/50 text-white"
                   >
                     <div className="font-semibold">{result.symbol}</div>
@@ -277,7 +277,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
                 <StockCard
                   key={stock.symbol}
                   stock={stock}
-                  onAddToWatchlist={(watchlistItem) => addToWatchlist(watchlistItem.symbol)}
+                  onAddToWatchlist={(watchlistItem) => addToWatchlist(watchlistItem)}
                 />
               ))}
             </div>
