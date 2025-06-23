@@ -86,13 +86,6 @@ export const Homepage: React.FC<HomepageProps> = ({ onSignIn, onGetStarted }) =>
                 <span>Get Started</span>
                 <ArrowRight className="w-5 h-5 ml-2" />
               </button>
-              <button
-                onClick={onSignIn}
-                className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white px-8 py-3 rounded-lg text-lg font-semibold transition-colors flex items-center justify-center"
-              >
-                <span>Sign In</span>
-                <Play className="w-5 h-5 ml-2" />
-              </button>
             </div>
           </div>
         </div>
@@ -211,6 +204,23 @@ export const Homepage: React.FC<HomepageProps> = ({ onSignIn, onGetStarted }) =>
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="bg-slate-900 border-t border-cyan-500/20 py-8 mt-8">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between">
+          <div className="mb-4 md:mb-0 flex items-center space-x-2">
+            <TrendingUp className="w-6 h-6 text-cyan-400" />
+            <span className="text-white font-bold text-lg">StockPulse</span>
+          </div>
+          <div className="flex space-x-6 mb-4 md:mb-0">
+            <a href="#top" className="text-gray-400 hover:text-cyan-400 transition-colors">Features</a>
+            <a href="#pricing" className="text-gray-400 hover:text-cyan-400 transition-colors">Pricing</a>
+          </div>
+          <div className="text-gray-500 text-sm text-center md:text-right">
+            &copy; {new Date().getFullYear()} StockPulse™. All rights reserved.
+          </div>
+        </div>
+      </footer>
     </div>
   );
-}; 
+};
