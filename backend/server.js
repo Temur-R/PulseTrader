@@ -12,6 +12,7 @@ app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'your-project-id';
 
 // In-memory user storage (replace with a database in production)
 const users = new Map();
@@ -19,17 +20,26 @@ const watchlists = new Map();
 
 // Authentication middleware
 const authenticateToken = (req, res, next) => {
+  console.log('Authenticating request...');
+  console.log('Headers:', req.headers);
+  
   const authHeader = req.headers['authorization'];
+  console.log('Auth header:', authHeader);
+  
   const token = authHeader && authHeader.split(' ')[1];
+  console.log('Token found:', !!token);
 
   if (!token) {
+    console.log('No token provided');
     return res.status(401).json({ error: 'Authentication required' });
   }
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
+      console.error('Token verification failed:', err);
       return res.status(403).json({ error: 'Invalid token' });
     }
+    console.log('Token verified successfully for user:', user.email);
     req.user = user;
     next();
   });
@@ -78,6 +88,60 @@ app.post('/api/auth/google', async (req, res) => {
   } catch (error) {
     console.error('Google authentication error:', error);
     res.status(401).json({ error: 'Invalid Google credentials' });
+  }
+});
+
+// Firebase token exchange endpoint
+app.post('/api/auth/firebase', async (req, res) => {
+  try {
+    const { firebaseToken } = req.body;
+    
+    if (!firebaseToken) {
+      return res.status(400).json({ error: 'Firebase token is required' });
+    }
+
+    // Decode the token first to get basic info
+    const decodedToken = jwt.decode(firebaseToken);
+    if (!decodedToken || !decodedToken.email) {
+      return res.status(401).json({ error: 'Invalid Firebase token format' });
+    }
+
+    const { email } = decodedToken;
+    
+    // Create or update user in our system
+    if (!users.has(email)) {
+      users.set(email, {
+        email,
+        firstName: decodedToken.name?.split(' ')[0] || 'User',
+        lastName: decodedToken.name?.split(' ').slice(1).join(' ') || '',
+        firebaseUid: decodedToken.sub,
+        isFirebaseUser: true
+      });
+    }
+
+    // Generate our own JWT token
+    const token = jwt.sign(
+      { 
+        email,
+        firebaseUid: decodedToken.sub,
+        firstName: users.get(email).firstName,
+        lastName: users.get(email).lastName
+      },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.json({ 
+      token,
+      user: {
+        email,
+        firstName: users.get(email).firstName,
+        lastName: users.get(email).lastName
+      }
+    });
+  } catch (error) {
+    console.error('Firebase token exchange error:', error);
+    res.status(401).json({ error: 'Invalid Firebase token' });
   }
 });
 
@@ -314,6 +378,7 @@ app.get('/api/stocks/trending/market', async (req, res) => {
 // Watchlist endpoints
 app.get('/api/watchlist', authenticateToken, async (req, res) => {
   try {
+    console.log('GET /api/watchlist - User:', req.user.email);
     const userWatchlist = watchlists.get(req.user.email) || [];
     console.log(`Fetching watchlist for user ${req.user.email}:`, userWatchlist);
     
@@ -358,16 +423,24 @@ app.get('/api/watchlist', authenticateToken, async (req, res) => {
 
 app.post('/api/watchlist', authenticateToken, async (req, res) => {
   try {
+    console.log('POST /api/watchlist - User:', req.user.email);
+    console.log('Request body:', req.body);
+    
     const { symbol, targetPrice, alertType } = req.body;
     
     if (!symbol || targetPrice === undefined || !alertType) {
+      console.error('Missing required fields:', { symbol, targetPrice, alertType });
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     // Verify the stock exists and get current data
     try {
+      console.log(`Verifying stock ${symbol}...`);
       const quote = await yahooFinance.quote(symbol);
+      console.log(`Stock verification result:`, quote);
+      
       if (!quote || !quote.regularMarketPrice) {
+        console.error(`Stock not found: ${symbol}`);
         return res.status(404).json({ error: 'Stock not found' });
       }
     } catch (error) {
@@ -379,18 +452,23 @@ app.post('/api/watchlist', authenticateToken, async (req, res) => {
     const userWatchlist = watchlists.get(userEmail) || [];
     
     if (userWatchlist.some(item => item.symbol === symbol)) {
+      console.log(`Stock ${symbol} already in watchlist for user ${userEmail}`);
       return res.status(400).json({ error: 'Stock already in watchlist' });
     }
 
-    userWatchlist.push({ 
+    const newWatchlistItem = { 
       symbol, 
       targetPrice: Number(targetPrice), 
       alertType,
       addedAt: new Date().toISOString()
-    });
+    };
+    
+    userWatchlist.push(newWatchlistItem);
     watchlists.set(userEmail, userWatchlist);
     
-    console.log(`Added ${symbol} to watchlist for ${userEmail}`);
+    console.log(`Added ${symbol} to watchlist for ${userEmail}:`, newWatchlistItem);
+    console.log('Updated watchlist:', watchlists.get(userEmail));
+    
     res.status(201).json({ message: 'Added to watchlist' });
   } catch (error) {
     console.error('Add to watchlist error:', error);

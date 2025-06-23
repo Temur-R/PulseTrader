@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
 import { useFirebase } from '../contexts/FirebaseContext';
+import { PulseTraderAPI } from '../services/api';
 
 interface AuthPagesProps {
   onAuthSuccess: (token: string) => void;
   initialMode: 'signin' | 'signup';
 }
+
+const api = new PulseTraderAPI();
 
 const AuthPages: React.FC<AuthPagesProps> = ({ onAuthSuccess, initialMode }) => {
   const [email, setEmail] = useState('');
@@ -31,22 +34,30 @@ const AuthPages: React.FC<AuthPagesProps> = ({ onAuthSuccess, initialMode }) => 
           setError('First name and last name are required');
           return;
         }
-        const token = await signUpWithEmail(email, password, firstName.trim(), lastName.trim());
-        onAuthSuccess(token);
+        const result = await signUpWithEmail(email, password, firstName.trim(), lastName.trim());
+        const firebaseToken = await result.user.getIdToken();
+        const response = await api.exchangeFirebaseToken(firebaseToken);
+        onAuthSuccess(response.token);
       } else {
-        const token = await signInWithEmail(email, password);
-        onAuthSuccess(token);
+        const result = await signInWithEmail(email, password);
+        const firebaseToken = await result.user.getIdToken();
+        const response = await api.exchangeFirebaseToken(firebaseToken);
+        onAuthSuccess(response.token);
       }
     } catch (err) {
+      console.error('Authentication error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     }
   };
 
   const handleGoogleSignIn = async () => {
     try {
-      const token = await signInWithGoogle();
-      onAuthSuccess(token);
+      const result = await signInWithGoogle();
+      const firebaseToken = await result.user.getIdToken();
+      const response = await api.exchangeFirebaseToken(firebaseToken);
+      onAuthSuccess(response.token);
     } catch (err) {
+      console.error('Google sign-in error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred during Google authentication');
     }
   };
@@ -193,17 +204,16 @@ const AuthPages: React.FC<AuthPagesProps> = ({ onAuthSuccess, initialMode }) => 
                 {mode === 'signin' ? 'Sign In' : 'Create Account'}
               </button>
             </div>
-
-            <div className="text-center mt-4">
-              <button
-                type="button"
-                onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-                className="text-sm text-cyan-400 hover:text-cyan-300"
-              >
-                {mode === 'signin' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-              </button>
-            </div>
           </form>
+
+          <div className="text-center mt-4">
+            <button
+              onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
+              className="text-cyan-400 hover:text-cyan-300 text-sm font-medium"
+            >
+              {mode === 'signin' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
