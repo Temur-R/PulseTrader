@@ -129,13 +129,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
       // Convert YahooStockData to WatchlistItem
       const validWatchlistData = watchlistData.map(item => ({
         symbol: item.symbol,
-        name: item.name,
-        price: item.price,
-        change: item.change,
-        changePercent: item.changePercent,
-        volume: item.volume || 0,
-        marketCap: item.marketCap || 0,
-        targetPrice: item.targetPrice || item.price * 1.1,
+        name: item.name || item.symbol,
+        price: parseFloat(item.price) || 0,
+        change: parseFloat(item.change) || 0,
+        changePercent: parseFloat(item.changePercent) || 0,
+        volume: parseFloat(item.volume) || 0,
+        marketCap: parseFloat(item.marketCap) || 0,
+        targetPrice: parseFloat(item.targetPrice) || parseFloat(item.price) * 1.1 || 0,
         alertType: item.alertType || 'above'
       }));
       
@@ -277,7 +277,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
                 <StockCard
                   key={stock.symbol}
                   stock={stock}
-                  onAddToWatchlist={(watchlistItem) => addToWatchlist(watchlistItem)}
+                  onAddToWatchlist={() => addToWatchlist(stock)}
                 />
               ))}
             </div>

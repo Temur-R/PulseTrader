@@ -142,22 +142,25 @@ app.get('/api/watchlist', authenticateToken, (req, res) => {
 });
 
 app.post('/api/watchlist', authenticateToken, (req, res) => {
-  const { symbol, targetPrice, alertType } = req.body;
+  const { symbol, targetPrice, alertType, name, price, change } = req.body;
   
   const userWatchlist = watchlists.get(req.user.email) || [];
   if (!userWatchlist.some(item => item.symbol === symbol)) {
     userWatchlist.push({
       symbol,
-      targetPrice,
-      alertType,
-      name: req.body.name || symbol,
-      price: req.body.price || 0,
-      change: req.body.change || 0
+      targetPrice: parseFloat(targetPrice) || 0,
+      alertType: alertType || 'above',
+      name: name || symbol,
+      price: parseFloat(price) || 0,
+      change: parseFloat(change) || 0,
+      changePercent: 0,
+      volume: 0,
+      marketCap: 0
     });
     watchlists.set(req.user.email, userWatchlist);
   }
 
-  res.json({ success: true });
+  res.json({ success: true, watchlist: userWatchlist });
 });
 
 app.delete('/api/watchlist/:symbol', authenticateToken, (req, res) => {
