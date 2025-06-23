@@ -1,38 +1,32 @@
-import { initializeApp, getApps } from 'firebase/app';
+import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getAnalytics } from 'firebase/analytics';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCKFwGb99DhNy-1dNPEq-PdOkdbau4XluU",
-  authDomain: "pulsetrader-3505c.firebaseapp.com",
-  projectId: "pulsetrader-3505c",
-  storageBucket: "pulsetrader-3505c.firebasestorage.app",
-  messagingSenderId: "684793998943",
-  appId: "1:684793998943:web:7892e3d72c94b624e935ea",
-  measurementId: "G-ZZLWHGSSFP"
+  apiKey: "AIzaSyBxEpZwxqKcXr2kG_KfVJtQQN-qRB7oVhE",
+  authDomain: "stockpulse-c6d3f.firebaseapp.com",
+  projectId: "stockpulse-c6d3f",
+  storageBucket: "stockpulse-c6d3f.appspot.com",
+  messagingSenderId: "368066262321",
+  appId: "1:368066262321:web:b8e5e5e5e5e5e5e5e5e5e5",
+  measurementId: "G-XXXXXXXXXX"
 };
 
-console.log('Initializing Firebase...');
-
-// Initialize Firebase only if it hasn't been initialized yet
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
-console.log('✓ Firebase initialized successfully');
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase services
-const auth = getAuth(app);
-const db = getFirestore(app);
-console.log('✓ Firebase services initialized');
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const analytics = getAnalytics(app);
 
 // Configure Google Auth Provider
 const googleProvider = new GoogleAuthProvider();
-googleProvider.addScope('profile');
-googleProvider.addScope('email');
 googleProvider.setCustomParameters({
-  prompt: 'select_account'
+  client_id: '368066262321-1a69e8ac6chvn89693msd4gs3ubaptft.apps.googleusercontent.com'
 });
-console.log('✓ Google Auth Provider configured');
 
-// Export initialized instances
-export { auth, db, googleProvider, app };
+export { googleProvider };
 export default app; 

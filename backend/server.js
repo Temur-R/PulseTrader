@@ -4,9 +4,6 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const bcrypt = require('bcryptjs');
 const yahooFinance = require('yahoo-finance2').default;
-const fs = require('fs');
-const path = require('path');
-const admin = require('firebase-admin');
 require('dotenv').config();
 
 const app = express();
@@ -15,69 +12,27 @@ app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'your-project-id';
-
-// File path for watchlist data
-const WATCHLIST_FILE = path.join(__dirname, 'watchlist.json');
-
-// Initialize or load watchlists from file
-let watchlists = new Map();
-try {
-  if (fs.existsSync(WATCHLIST_FILE)) {
-    const data = JSON.parse(fs.readFileSync(WATCHLIST_FILE, 'utf8'));
-    watchlists = new Map(Object.entries(data));
-    console.log('Loaded watchlists from file:', watchlists);
-  }
-} catch (error) {
-  console.error('Error loading watchlist file:', error);
-}
-
-// Function to save watchlists to file
-const saveWatchlists = () => {
-  try {
-    const data = Object.fromEntries(watchlists);
-    fs.writeFileSync(WATCHLIST_FILE, JSON.stringify(data, null, 2));
-    console.log('Saved watchlists to file');
-  } catch (error) {
-    console.error('Error saving watchlist file:', error);
-  }
-};
 
 // In-memory user storage (replace with a database in production)
 const users = new Map();
-
-// Initialize Firebase Admin
-const serviceAccount = require('./serviceAccountKey.json');
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
-
-const db = admin.firestore();
+const watchlists = new Map();
 
 // Authentication middleware
-const authenticateToken = async (req, res, next) => {
-  console.log('Authenticating request...');
-  console.log('Headers:', req.headers);
-  
+const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
-  console.log('Auth header:', authHeader);
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
-  const token = authHeader.split(' ')[1];
-  console.log('Token found:', !!token);
-  
-  try {
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    console.log('Token verified successfully for user:', decodedToken.email);
-    req.user = decodedToken;
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid token' });
+    }
+    req.user = user;
     next();
-  } catch (error) {
-    console.error('Token verification failed:', error);
-    return res.status(403).json({ error: 'Invalid token' });
-  }
+  });
 };
 
 // Google OAuth verification endpoint
@@ -123,60 +78,6 @@ app.post('/api/auth/google', async (req, res) => {
   } catch (error) {
     console.error('Google authentication error:', error);
     res.status(401).json({ error: 'Invalid Google credentials' });
-  }
-});
-
-// Firebase token exchange endpoint
-app.post('/api/auth/firebase', async (req, res) => {
-  try {
-    const { firebaseToken } = req.body;
-    
-    if (!firebaseToken) {
-      return res.status(400).json({ error: 'Firebase token is required' });
-    }
-
-    // Decode the token first to get basic info
-    const decodedToken = jwt.decode(firebaseToken);
-    if (!decodedToken || !decodedToken.email) {
-      return res.status(401).json({ error: 'Invalid Firebase token format' });
-    }
-
-    const { email } = decodedToken;
-    
-    // Create or update user in our system
-    if (!users.has(email)) {
-      users.set(email, {
-        email,
-        firstName: decodedToken.name?.split(' ')[0] || 'User',
-        lastName: decodedToken.name?.split(' ').slice(1).join(' ') || '',
-        firebaseUid: decodedToken.sub,
-        isFirebaseUser: true
-      });
-    }
-
-    // Generate our own JWT token
-    const token = jwt.sign(
-      { 
-        email,
-        firebaseUid: decodedToken.sub,
-        firstName: users.get(email).firstName,
-        lastName: users.get(email).lastName
-      },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    res.json({ 
-      token,
-      user: {
-        email,
-        firstName: users.get(email).firstName,
-        lastName: users.get(email).lastName
-      }
-    });
-  } catch (error) {
-    console.error('Firebase token exchange error:', error);
-    res.status(401).json({ error: 'Invalid Firebase token' });
   }
 });
 
@@ -287,66 +188,37 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-// Configure Yahoo Finance options
-const yahooOptions = {
-  queue: {
-    concurrent: 5, // Number of concurrent requests
-    interval: 1000, // Delay between requests in ms
-    timeout: 10000 // Request timeout in ms
-  }
-};
-
-// Initialize Yahoo Finance with options
-let yahooClient;
-try {
-  yahooClient = yahooFinance;
-  console.log('Yahoo Finance client initialized successfully');
-} catch (error) {
-  console.error('Failed to initialize Yahoo Finance client:', error);
-}
-
 // Stock-related endpoints
-app.get('/api/stocks/search', authenticateToken, async (req, res) => {
+app.get('/api/stocks/search', async (req, res) => {
   try {
     const query = req.query.q;
-    console.log('Searching for stocks with query:', query);
-
     if (!query) {
-      return res.status(400).json({ error: 'Search query required' });
+      return res.status(400).json({ error: 'Search query is required' });
     }
 
-    if (!yahooClient) {
-      console.error('Yahoo Finance client not initialized');
-      return res.status(500).json({ error: 'Stock service unavailable' });
-    }
-
-    console.log('Making Yahoo Finance search request...');
-    const results = await yahooClient.search(query, yahooOptions);
+    console.log('Searching for:', query);
+    const results = await yahooFinance.search(query, { newsCount: 0 });
     console.log('Search results:', results);
 
     if (!results || !results.quotes) {
-      console.warn('No results found for query:', query);
-      return res.json([]);
+      return res.status(404).json({ error: 'No results found' });
     }
 
-    const quotes = await Promise.all(
+    const stocks = await Promise.all(
       results.quotes
         .filter(quote => quote.quoteType === 'EQUITY')
         .slice(0, 5)
-        .map(async quote => {
+        .map(async (quote) => {
           try {
-            console.log('Fetching details for symbol:', quote.symbol);
-            const detail = await yahooClient.quote(quote.symbol, yahooOptions);
-            console.log('Details received for symbol:', quote.symbol, detail);
-            
+            const details = await yahooFinance.quote(quote.symbol);
             return {
-              symbol: detail.symbol,
-              name: detail.longName || detail.shortName,
-              price: detail.regularMarketPrice,
-              change: detail.regularMarketChange,
-              changePercent: detail.regularMarketChangePercent,
-              volume: detail.regularMarketVolume,
-              marketCap: detail.marketCap
+              symbol: details.symbol || quote.symbol,
+              name: details.longName || details.shortName || quote.shortName || quote.symbol,
+              price: details.regularMarketPrice || 0,
+              change: details.regularMarketChange || 0,
+              changePercent: details.regularMarketChangePercent || 0,
+              volume: details.regularMarketVolume || 0,
+              marketCap: details.marketCap || 0
             };
           } catch (error) {
             console.error(`Error fetching details for ${quote.symbol}:`, error);
@@ -355,106 +227,94 @@ app.get('/api/stocks/search', authenticateToken, async (req, res) => {
         })
     );
 
-    const validQuotes = quotes.filter(q => q !== null);
-    console.log('Sending response with valid quotes:', validQuotes);
-    res.json(validQuotes);
+    const validStocks = stocks.filter(stock => stock !== null);
+    res.json(validStocks);
   } catch (error) {
     console.error('Search error:', error);
-    res.status(500).json({ error: 'Search failed: ' + error.message });
+    res.status(500).json({ error: 'Failed to search stocks' });
   }
 });
 
-app.get('/api/stocks/:symbol', authenticateToken, async (req, res) => {
+app.get('/api/stocks/:symbol', async (req, res) => {
   try {
     const { symbol } = req.params;
-    console.log('Fetching stock details for symbol:', symbol);
-
-    if (!yahooClient) {
-      console.error('Yahoo Finance client not initialized');
-      return res.status(500).json({ error: 'Stock service unavailable' });
-    }
-
-    const quote = await yahooClient.quote(symbol, yahooOptions);
+    console.log(`Fetching data for symbol: ${symbol}`);
+    
+    const quote = await yahooFinance.quote(symbol);
     console.log('Received quote data:', quote);
     
     if (!quote) {
-      return res.status(404).json({ error: 'Stock not found' });
+      return res.status(404).json({ error: 'Stock data not found' });
     }
 
-    const response = {
+    const result = {
       symbol: quote.symbol,
-      name: quote.longName || quote.shortName,
-      price: quote.regularMarketPrice,
-      change: quote.regularMarketChange,
-      changePercent: quote.regularMarketChangePercent,
-      volume: quote.regularMarketVolume,
-      marketCap: quote.marketCap,
-      high: quote.regularMarketDayHigh,
-      low: quote.regularMarketDayLow,
-      open: quote.regularMarketOpen,
-      previousClose: quote.regularMarketPreviousClose
+      name: quote.longName || quote.shortName || symbol,
+      price: quote.regularMarketPrice || quote.price || 0,
+      change: quote.regularMarketChange || 0,
+      changePercent: quote.regularMarketChangePercent || 0,
+      volume: quote.regularMarketVolume || 0,
+      marketCap: quote.marketCap || 0,
+      high: quote.regularMarketDayHigh || 0,
+      low: quote.regularMarketDayLow || 0,
+      open: quote.regularMarketOpen || 0,
+      previousClose: quote.regularMarketPreviousClose || 0
     };
-
-    console.log('Sending response:', response);
-    res.json(response);
+    
+    console.log('Sending response:', result);
+    res.json(result);
   } catch (error) {
     console.error('Stock data error:', error);
-    res.status(500).json({ error: 'Failed to fetch stock data: ' + error.message });
+    res.status(500).json({ error: 'Failed to fetch stock data' });
   }
 });
 
-app.get('/api/stocks/trending/market', authenticateToken, async (req, res) => {
+app.get('/api/stocks/trending/market', async (req, res) => {
   try {
-    console.log('Fetching trending stocks');
-    const trendingSymbols = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA', 'AMD'];
+    const trendingStocks = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA', 'AMD'];
+    console.log('Fetching trending stocks:', trendingStocks);
     
-    if (!yahooClient) {
-      console.error('Yahoo Finance client not initialized');
-      return res.status(500).json({ error: 'Stock service unavailable' });
-    }
-
-    const trendingData = await Promise.all(
-      trendingSymbols.map(async symbol => {
+    const quotes = await Promise.all(
+      trendingStocks.map(async (symbol) => {
         try {
-          console.log(`Fetching data for trending stock: ${symbol}`);
-          const quote = await yahooClient.quote(symbol, yahooOptions);
+          console.log(`Fetching data for ${symbol}...`);
+          const quote = await yahooFinance.quote(symbol);
           console.log(`Received data for ${symbol}:`, quote);
           
+          if (!quote) {
+            console.error(`No data available for ${symbol}`);
+            return null;
+          }
+
           return {
             symbol: quote.symbol,
-            name: quote.longName || quote.shortName,
-            price: quote.regularMarketPrice,
-            change: quote.regularMarketChange,
-            changePercent: quote.regularMarketChangePercent,
-            volume: quote.regularMarketVolume,
-            marketCap: quote.marketCap
+            name: quote.longName || quote.shortName || symbol,
+            price: quote.regularMarketPrice || 0,
+            change: quote.regularMarketChange || 0,
+            changePercent: quote.regularMarketChangePercent || 0,
+            volume: quote.regularMarketVolume || 0,
+            marketCap: quote.marketCap || 0
           };
         } catch (error) {
-          console.error(`Error fetching ${symbol}:`, error);
+          console.error(`Error fetching data for ${symbol}:`, error);
           return null;
         }
       })
     );
 
-    const validTrendingData = trendingData.filter(stock => stock !== null);
-    console.log('Sending trending stocks:', validTrendingData);
-    res.json(validTrendingData);
+    const validQuotes = quotes.filter(quote => quote !== null);
+    console.log('Sending trending stocks:', validQuotes);
+    res.json(validQuotes);
   } catch (error) {
-    console.error('Trending stocks error:', error);
-    res.status(500).json({ error: 'Failed to fetch trending stocks: ' + error.message });
+    console.error('Error fetching trending stocks:', error);
+    res.status(500).json({ error: 'Failed to fetch trending stocks' });
   }
 });
 
 // Watchlist endpoints
 app.get('/api/watchlist', authenticateToken, async (req, res) => {
   try {
-    console.log('GET /api/watchlist - User:', req.user.email);
-    
-    // Get user's watchlist from Firestore
-    const watchlistRef = db.collection('watchlists');
-    const snapshot = await watchlistRef.where('userId', '==', req.user.uid).get();
-    
-    const userWatchlist = snapshot.docs.map(doc => doc.data());
+    const userWatchlist = watchlists.get(req.user.email) || [];
     console.log(`Fetching watchlist for user ${req.user.email}:`, userWatchlist);
     
     const watchlistData = await Promise.all(
@@ -498,74 +358,55 @@ app.get('/api/watchlist', authenticateToken, async (req, res) => {
 
 app.post('/api/watchlist', authenticateToken, async (req, res) => {
   try {
-    console.log('POST /api/watchlist - User:', req.user.email);
-    console.log('Request body:', req.body);
-    
     const { symbol, targetPrice, alertType } = req.body;
     
     if (!symbol || targetPrice === undefined || !alertType) {
-      console.error('Missing required fields:', { symbol, targetPrice, alertType });
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     // Verify the stock exists and get current data
     try {
-      console.log(`Verifying stock ${symbol}...`);
       const quote = await yahooFinance.quote(symbol);
-      console.log(`Stock verification result:`, quote);
-      
       if (!quote || !quote.regularMarketPrice) {
-        console.error(`Stock not found: ${symbol}`);
         return res.status(404).json({ error: 'Stock not found' });
       }
-
-      // Check if stock already exists in watchlist
-      const watchlistRef = db.collection('watchlists');
-      const docRef = watchlistRef.doc(`${req.user.uid}_${symbol}`);
-      const doc = await docRef.get();
-
-      if (doc.exists) {
-        console.log(`Stock ${symbol} already in watchlist for user ${req.user.email}`);
-        return res.status(400).json({ error: 'Stock already in watchlist' });
-      }
-
-      // Add to Firestore
-      await docRef.set({
-        userId: req.user.uid,
-        symbol,
-        targetPrice: Number(targetPrice),
-        alertType,
-        addedAt: admin.firestore.FieldValue.serverTimestamp(),
-        name: quote.longName || quote.shortName || symbol,
-        price: quote.regularMarketPrice || quote.price || 0,
-        change: quote.regularMarketChange || 0,
-        changePercent: quote.regularMarketChangePercent || 0,
-        volume: quote.regularMarketVolume || 0,
-        marketCap: quote.marketCap || 0
-      });
-      
-      console.log(`Added ${symbol} to watchlist for ${req.user.email}`);
-      res.status(201).json({ message: 'Added to watchlist' });
     } catch (error) {
       console.error(`Error verifying stock ${symbol}:`, error);
       return res.status(404).json({ error: 'Stock not found' });
     }
+
+    const userEmail = req.user.email;
+    const userWatchlist = watchlists.get(userEmail) || [];
+    
+    if (userWatchlist.some(item => item.symbol === symbol)) {
+      return res.status(400).json({ error: 'Stock already in watchlist' });
+    }
+
+    userWatchlist.push({ 
+      symbol, 
+      targetPrice: Number(targetPrice), 
+      alertType,
+      addedAt: new Date().toISOString()
+    });
+    watchlists.set(userEmail, userWatchlist);
+    
+    console.log(`Added ${symbol} to watchlist for ${userEmail}`);
+    res.status(201).json({ message: 'Added to watchlist' });
   } catch (error) {
     console.error('Add to watchlist error:', error);
     res.status(500).json({ error: 'Failed to add to watchlist' });
   }
 });
 
-app.delete('/api/watchlist/:symbol', authenticateToken, async (req, res) => {
+app.delete('/api/watchlist/:symbol', authenticateToken, (req, res) => {
   try {
     const { symbol } = req.params;
-    console.log(`DELETE /api/watchlist/${symbol} - User:`, req.user.email);
-
-    // Delete from Firestore
-    const docRef = db.collection('watchlists').doc(`${req.user.uid}_${symbol}`);
-    await docRef.delete();
+    const userEmail = req.user.email;
+    const userWatchlist = watchlists.get(userEmail) || [];
     
-    console.log(`Removed ${symbol} from watchlist for ${req.user.email}`);
+    const updatedWatchlist = userWatchlist.filter(item => item.symbol !== symbol);
+    watchlists.set(userEmail, updatedWatchlist);
+    
     res.json({ message: 'Removed from watchlist' });
   } catch (error) {
     console.error('Remove from watchlist error:', error);
@@ -573,7 +414,7 @@ app.delete('/api/watchlist/:symbol', authenticateToken, async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
-const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const port = process.env.PORT || 3001;
+const server = app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 }); 

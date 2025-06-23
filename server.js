@@ -21,7 +21,7 @@ const stocks = new Map([
 const watchlists = new Map();
 const notifications = new Map();
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = 'your-secret-key'; // In production, use environment variable
 
 app.use(cors());
 app.use(express.json());
@@ -71,29 +71,14 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 // Stock routes
-const axios = require('axios');
-
-app.get('/api/stocks/search', authenticateToken, async (req, res) => {
-  try {
-    const response = await axios.get('http://localhost:5000/api/search', {
-      params: { q: req.query.q }
-    });
-    
-    const results = response.data.filter(stock => 
-      stock.symbol && stock.price !== undefined
-    ).map(stock => ({
-      symbol: stock.symbol,
-      name: stock.name,
-      price: stock.price,
-      change: stock.change,
-      exchange: stock.exchange
-    }));
-      
-    res.json(results);
-  } catch (error) {
-    console.error('Yahoo Finance API error:', error);
-    res.status(500).json({ error: 'Failed to fetch stock data' });
-  }
+app.get('/api/stocks/search', authenticateToken, (req, res) => {
+  const query = req.query.q.toLowerCase();
+  const results = Array.from(stocks.values())
+    .filter(stock => 
+      stock.symbol.toLowerCase().includes(query) || 
+      stock.name.toLowerCase().includes(query)
+    );
+  res.json(results);
 });
 
 app.get('/api/stocks/:symbol', authenticateToken, (req, res) => {
@@ -132,25 +117,18 @@ app.get('/api/watchlist', authenticateToken, (req, res) => {
 });
 
 app.post('/api/watchlist', authenticateToken, (req, res) => {
-  const { symbol, targetPrice, alertType, name, price, change } = req.body;
-  
+  const { symbol, targetPrice } = req.body;
+  if (!stocks.has(symbol)) {
+    return res.status(404).json({ error: 'Stock not found' });
+  }
+
   const userWatchlist = watchlists.get(req.user.email) || [];
-  if (!userWatchlist.some(item => item.symbol === symbol)) {
-    userWatchlist.push({
-      symbol,
-      targetPrice: parseFloat(targetPrice) || 0,
-      alertType: alertType || 'above',
-      name: name || symbol,
-      price: parseFloat(price) || 0,
-      change: parseFloat(change) || 0,
-      changePercent: 0,
-      volume: 0,
-      marketCap: 0
-    });
+  if (!userWatchlist.includes(symbol)) {
+    userWatchlist.push(symbol);
     watchlists.set(req.user.email, userWatchlist);
   }
 
-  res.json({ success: true, watchlist: userWatchlist });
+  res.json({ success: true });
 });
 
 app.delete('/api/watchlist/:symbol', authenticateToken, (req, res) => {
@@ -167,7 +145,6 @@ app.delete('/api/watchlist/:symbol', authenticateToken, (req, res) => {
 
 // WebSocket connection handling
 wss.on('connection', (ws) => {
-  ws.on('error', console.error);
   console.log('Client connected');
 
   // Send periodic updates
@@ -193,17 +170,7 @@ wss.on('connection', (ws) => {
   });
 });
 
-const path = require('path');
-const PORT = process.env.PORT || 3002;
-
-// Serve static files from React build
-app.use(express.static(path.join(__dirname, 'build')));
-
-// Handle React routing, return all requests to React app
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'build', 'index.html'));
-});
-
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 }); 

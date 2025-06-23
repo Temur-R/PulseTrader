@@ -18,9 +18,6 @@
 .env.test.local
 .env.production.local
 
-backend/serviceAccountKey.json
-
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log* 
-.aider*

@@ -19,40 +19,26 @@ export interface YahooStockData {
 export class PulseTraderAPI {
   private token: string | null;
   private baseUrl: string;
-  private static readonly TOKEN_KEY = 'stockpulse_token';
 
   constructor() {
-    console.log('Initializing PulseTraderAPI...');
-    const storedToken = localStorage.getItem(PulseTraderAPI.TOKEN_KEY);
-    console.log('Stored token found:', !!storedToken);
-    this.token = storedToken;
+    this.token = localStorage.getItem('pulsetrader_token');
     this.baseUrl = 'http://localhost:3001/api';
   }
 
   private async request(endpoint: string, options: RequestInit = {}) {
-    console.log('Making API request:', endpoint);
-    console.log('Current token:', this.token);
-    console.log('Token in localStorage:', localStorage.getItem(PulseTraderAPI.TOKEN_KEY));
-    
-    if (!this.token) {
-      const storedToken = localStorage.getItem(PulseTraderAPI.TOKEN_KEY);
-      if (storedToken) {
-        console.log('Found token in localStorage, restoring...');
-        this.token = storedToken;
-      } else {
-        console.warn('No token available for request');
-      }
-    }
-
     const headers = {
       'Content-Type': 'application/json',
       ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
       ...options.headers,
     };
 
-    console.log('Request headers:', {
-      ...headers,
-      Authorization: this.token ? 'Bearer [TOKEN]' : undefined
+    console.log('Making API request to:', `${this.baseUrl}${endpoint}`);
+    console.log('Request options:', {
+      ...options,
+      headers: {
+        ...headers,
+        Authorization: this.token ? 'Bearer [TOKEN]' : undefined
+      }
     });
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -76,45 +62,15 @@ export class PulseTraderAPI {
   }
 
   setToken(token: string) {
-    console.log('Setting API token...');
     this.token = token;
-    localStorage.setItem(PulseTraderAPI.TOKEN_KEY, token);
+    localStorage.setItem('pulsetrader_token', token);
   }
 
   getToken(): string | null {
-    if (!this.token) {
-      const storedToken = localStorage.getItem(PulseTraderAPI.TOKEN_KEY);
-      if (storedToken) {
-        console.log('Found token in localStorage, restoring...');
-        this.token = storedToken;
-      }
-    }
     return this.token;
   }
 
-  clearToken() {
-    console.log('Clearing API token...');
-    this.token = null;
-    localStorage.removeItem(PulseTraderAPI.TOKEN_KEY);
-  }
-
   // Authentication methods
-  async exchangeFirebaseToken(firebaseToken: string) {
-    try {
-      const response = await this.request('/auth/firebase', {
-        method: 'POST',
-        body: JSON.stringify({ firebaseToken }),
-      });
-      if (response.token) {
-        this.setToken(response.token);
-      }
-      return response;
-    } catch (error) {
-      console.error('Failed to exchange Firebase token:', error);
-      throw error;
-    }
-  }
-
   async register(userData: { 
     firstName: string;
     lastName: string;

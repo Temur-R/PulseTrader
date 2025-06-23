@@ -4,10 +4,9 @@
   "private": true,
   "dependencies": {
     "@react-oauth/google": "^0.12.2",
-    "@types/node": "^20.19.1",
+    "@types/node": "^20.11.24",
     "@types/react": "^18.2.61",
     "@types/react-dom": "^18.2.19",
-    "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
@@ -23,24 +22,16 @@
     "ws": "^8.18.2"
   },
   "scripts": {
-    "start": "set PORT=3003 && react-app-rewired start",
-    "build": "react-app-rewired build && cp config-overrides.js build/",
-    "test": "react-app-rewired test",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.17",
-    "buffer": "^6.0.3",
-    "crypto-browserify": "^3.12.1",
-    "os-browserify": "^0.3.0",
-    "path-browserify": "^1.0.1",
     "postcss": "^8.4.35",
-    "process": "^0.11.10",
-    "react-app-rewired": "^2.2.1",
     "react-scripts": "^5.0.1",
-    "stream-browserify": "^3.0.0",
-    "tailwindcss": "^3.4.1",
-    "vm-browserify": "^1.1.2"
+    "tailwindcss": "^3.4.1"
   },
   "browserslist": {
     "production": [
@@ -53,18 +44,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "description": "��#\u0000 \u0000P\u0000u\u0000l\u0000s\u0000e\u0000T\u0000r\u0000a\u0000d\u0000e\u0000r\u0000\r\u0000 \u0000",
-  "main": "config-overrides.js",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Temur-R/PulseTrader.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Temur-R/PulseTrader/issues"
-  },
-  "homepage": "https://github.com/Temur-R/PulseTrader#readme"
+  }
 }
