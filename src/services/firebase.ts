@@ -5,13 +5,13 @@ import { getAnalytics } from 'firebase/analytics';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBxEpZwxqKcXr2kG_KfVJtQQN-qRB7oVhE",
-  authDomain: "stockpulse-c6d3f.firebaseapp.com",
-  projectId: "stockpulse-c6d3f",
-  storageBucket: "stockpulse-c6d3f.appspot.com",
-  messagingSenderId: "368066262321",
-  appId: "1:368066262321:web:b8e5e5e5e5e5e5e5e5e5e5",
-  measurementId: "G-XXXXXXXXXX"
+  apiKey: "AIzaSyCKFwGb99DhNy-1dNPEq-PdOkdbau4XluU",
+  authDomain: "pulsetrader-3505c.firebaseapp.com",
+  projectId: "pulsetrader-3505c",
+  storageBucket: "pulsetrader-3505c.firebasestorage.app",
+  messagingSenderId: "684793998943",
+  appId: "1:684793998943:web:7892e3d72c94b624e935ea",
+  measurementId: "G-ZZLWHGSSFP"
 };
 
 // Initialize Firebase

@@ -35,7 +35,7 @@ export const Homepage: React.FC<HomepageProps> = ({ onSignIn, onGetStarted }) =>
   ];
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="w-full">
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 pt-16 pb-24">

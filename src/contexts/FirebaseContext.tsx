@@ -1,18 +1,17 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
 import {
-  getAuth,
   signInWithPopup,
-  GoogleAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
   User
 } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
 
-const firebaseConfig = {
+import { auth, db, googleProvider } from '../services/firebase';
+
+// Your web app's Firebase configuration
+export const firebaseConfig = {
   apiKey: "AIzaSyCKFwGb99DhNy-1dNPEq-PdOkdbau4XluU",
   authDomain: "pulsetrader-3505c.firebaseapp.com",
   projectId: "pulsetrader-3505c",
@@ -21,11 +20,6 @@ const firebaseConfig = {
   appId: "1:684793998943:web:7892e3d72c94b624e935ea",
   measurementId: "G-ZZLWHGSSFP"
 };
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const googleProvider = new GoogleAuthProvider();
 
 interface FirebaseContextType {
   user: User | null;
@@ -100,5 +94,3 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     </FirebaseContext.Provider>
   );
 };
-
-export { auth, db, googleProvider };

@@ -4,9 +4,28 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const bcrypt = require('bcryptjs');
 const yahooFinance = require('yahoo-finance2').default;
+const admin = require('firebase-admin');
 require('dotenv').config();
 
 const app = express();
+
+// Initialize Firebase Admin with your service account
+const serviceAccount = {
+  "type": "service_account",
+  "project_id": "pulsetrader-3505c",
+  "private_key_id": "f779e5fcd0eaf2e8304a2892f84e79fa8e3034ad",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC50Hxhy7no/X0C\nd0O5esX38Y3Dfq2/C8G8Fmu/OH+oDR8XuGEHJfUjWC3QKp6ysAn1FQhLOhOFDu+V\nHrjNctUVwWua8bNG234ZAYOQWPGrw+TVHclrHaHVLW5wYkomP8Bz1hetepbSmUDI\nEaaGWkBA+5zc0gq453tKbyLC42qEgTta3KuS8VvjYO+pbXyh24PPWqCsyXWLS/Mg\na+OOsSYTTAuBFDSVIWB9mSwxg2VqzNojTof/TL4ih88YKBaCPKxDRLVpORHIDf2K\noNxidLm1IKY8mxcHldggKO7bU4jzm2K00cFqXCdazP3qJvFUkJQ0jVcli5WDTSqF\nVSGywR5lAgMBAAECggEAVqcR4j9yDuPrwNMii6RkHwkQTdtNJltSuSaRj8bGzXV1\nCwhKg11hsN5l2v6NLJJoyljJGd/XC4WYF+gQUYscMP2W81aE/uXMK9gnZRD9ftcn\nZ3VxIVlbx4Dc0F8d6jFvy/VK7HVPUZ3zdnm4uU3sSgGsuNPg+TLGLcOfJ9iLK4gX\nIxY7BheOG6LCVw5BYmmSFBjvo0B7Veq8QWPjpdRl0EjFFKTiV2tRoiIDkbrHIp33\nzlzPi7oGY5WEf97g1O+NwSYgCTKPwHqBwKvFkDiCS1hklOw4AKzirYBAwB1XIWkn\ndjl4wNfHUWNO8Ku5ulozRgz+hcQtJY4t3x8LIi6XTwKBgQDkkxXKImU/kpNXBLsc\nNyF7Ha5kUPMpuJmsUkbdmEM/qTY+mBphG3R4inIdT4Wx171t+r6GwzxkOX2CxlAh\njGe8PDXbUkb+a8LxnMDAhXq8rH7EuNusA+3DipBWsRAe2M6GJK3vVxD5AXEaZMat\n2jLNaxivT9Dl3wnx4f2rpz3kQwKBgQDQG/nxBWBY2XJKdN8iwflxRTzRFhuWlQio\n4c1y8LqWfqtOOUijexorg2Yzdb7jjf3iGiABodbY2yhGsAX2PlAL3l3375BP9EUq\nHaY6D0rOittVnISfEc4WyLm3XiqLElVolgu2v9LkZLyvvB4oqjVBVX8Wb/BlQRFm\nViWGF49cNwKBgHCPIe7Na1CYDKiQctfdKkangiZyWpxUBJEAX1dmUM97s3O1kV/6\nlit5+eIHNA408FrFXKeeYxHz4aPRpsouizL974OWi9FkHba/e4gS8zMQOskDQ2H8\n+UwO4y9duFOIboNOcrznAjutAxZ9Q/1+8v+HWruSMYvRfuM3Z6TtEaRjAoGBAIlT\nTLU85Pz8UCzNvkiDU4TpOV6HhiDxq0s15YqJS7bvUz9FEae/Hd/Ez3X5psMl+Xhv\n4Nry3oEu7P7oPKbnK48JZ1yqWsJH4DQQaJY7bROqEV4G8IS/DQ1/2v0jSFOI/48K\nJCStpA5OYyxbqFMRLh80ua4mo61NKJwtEInRlio1AoGBAIVKRJ23icxRr//CpST1\npOUW51sAMo6YC5KDRHfsJ15k+mw/zv3ePiAAfZZiVeXQ3fO0/Ro4vJfh6b7baEWR\nEUw+PKDVioTF5eQP1dBofP0Yw97plo9QoFtSyNIQIOyenuRDAMrl2RhBBLiqTid4\nOtZEtMFNtf6V/nIBllbpagrC\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@pulsetrader-3505c.iam.gserviceaccount.com",
+  "client_id": "114454841593864974776",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40pulsetrader-3505c.iam.gserviceaccount.com"
+};
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
 
 // Configure CORS with specific options
 app.use(cors({
@@ -32,21 +51,24 @@ const users = new Map();
 const watchlists = new Map();
 
 // Authentication middleware
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid token' });
+const authenticateToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
     }
-    req.user = user;
+
+    const token = authHeader.split(' ')[1];
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    req.user = {
+      uid: decodedToken.uid,
+      email: decodedToken.email
+    };
     next();
-  });
+  } catch (error) {
+    console.error('Authentication error:', error);
+    res.status(403).json({ error: 'Invalid token' });
+  }
 };
 
 // Google OAuth verification endpoint

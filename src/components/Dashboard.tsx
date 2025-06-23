@@ -4,6 +4,7 @@ import { Stock, WatchlistItem, Notification, WebSocketMessage } from '../types';
 import { PulseTraderAPI, YahooStockData } from '../services/api';
 import { PulseTraderWebSocket } from '../services/websocket';
 import { EnhancedStockCard } from './EnhancedStockCard';
+import { auth } from '../services/firebase';
 
 interface DashboardProps {
   api: PulseTraderAPI;
@@ -53,8 +54,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
     loadInitialData();
 
     // Setup WebSocket
-    const ws = new PulseTraderWebSocket(api.getToken() || '', handleWebSocketMessage);
-    ws.connect();
+    const setupWebSocket = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          console.error('No user found for WebSocket connection');
+          return null;
+        }
+        const token = await user.getIdToken();
+        const ws = new PulseTraderWebSocket(token, handleWebSocketMessage);
+        ws.connect();
+        return ws;
+      } catch (error) {
+        console.error('Failed to setup WebSocket:', error);
+        return null;
+      }
+    };
+
+    let ws: PulseTraderWebSocket | null = null;
+    setupWebSocket().then(websocket => {
+      if (websocket) {
+        ws = websocket;
+      }
+    });
 
     // Refresh trending stocks every minute
     const trendingInterval = setInterval(async () => {
@@ -67,7 +89,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
     }, 60000);
 
     return () => {
-      ws.disconnect();
+      if (ws) {
+        ws.disconnect();
+      }
       clearInterval(trendingInterval);
     };
   }, []);
@@ -186,13 +210,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ api }) => {
               className="w-full bg-slate-800/50 border border-cyan-500/20 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-500/40"
             />
             
-            {searchResults.length > 0 && (
-              <div className="absolute top-full mt-2 w-full bg-slate-800 border border-cyan-500/20 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+            {searchResults.length > 0 && searchQuery.trim() !== '' && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-cyan-500/20 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
                 {searchResults.map(result => (
                   <button
                     key={result.symbol}
-                    onClick={() => addToWatchlist(result.symbol)}
-                    className="w-full px-3 py-1.5 text-left hover:bg-slate-700/50 text-white text-sm"
+                    onClick={() => {
+                      addToWatchlist(result.symbol);
+                      // Clear search after adding to watchlist
+                      setSearchQuery('');
+                      setSearchResults([]);
+                    }}
+                    className="w-full px-3 py-2 text-left hover:bg-slate-700/50 text-white text-sm transition-colors duration-150 ease-in-out flex flex-col gap-0.5"
                   >
                     <div className="font-semibold truncate">{result.symbol}</div>
                     <div className="text-xs text-gray-400 truncate">{result.name}</div>
