@@ -7,6 +7,7 @@
     "@types/node": "^20.19.1",
     "@types/react": "^18.2.61",
     "@types/react-dom": "^18.2.19",
+    "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
@@ -52,5 +53,18 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  }
+  },
+  "description": "��#\u0000 \u0000P\u0000u\u0000l\u0000s\u0000e\u0000T\u0000r\u0000a\u0000d\u0000e\u0000r\u0000\r\u0000 \u0000",
+  "main": "config-overrides.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Temur-R/PulseTrader.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Temur-R/PulseTrader/issues"
+  },
+  "homepage": "https://github.com/Temur-R/PulseTrader#readme"
 }
