@@ -75,22 +75,11 @@ const axios = require('axios');
 
 app.get('/api/stocks/search', authenticateToken, async (req, res) => {
   try {
-    const response = await axios.get(`https://query1.finance.yahoo.com/v1/finance/search`, {
-      params: {
-        q: req.query.q,
-        lang: 'en-US',
-        region: 'US',
-        quotesCount: 10
-      },
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-        'Accept': 'application/json',
-        'Origin': 'https://finance.yahoo.com',
-        'Authorization': `Bearer ${process.env.YAHOO_API_KEY}`
-      }
+    const response = await axios.get('http://localhost:5000/search', {
+      params: { q: req.query.q }
     });
     
-    const results = response.data.quotes
+    const results = response.data
       .filter(q => q.quoteType === 'EQUITY' && !q.symbol.includes('.'))
       .map(q => ({
         symbol: q.symbol,
