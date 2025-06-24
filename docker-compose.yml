@@ -1,0 +1,15 @@
+services:
+  api:
+    build: ./backend          # ⬅︎ points at the backend folder
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+
+  web:
+    build: ./frontend         # ⬅︎ ONLY the frontend folder
+    ports:
+      - "3000:80"
+    depends_on:
+      - api

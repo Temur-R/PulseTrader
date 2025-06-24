@@ -2,6 +2,11 @@
   "name": "pulsetrader-backend",
   "version": "1.0.0",
   "description": "Backend server for PulseTrader - Real-time stock monitoring and alerts",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
   "dependencies": {
     "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
@@ -10,9 +15,11 @@
     "express": "^5.1.0",
     "firebase-admin": "^11.11.0",
     "jsonwebtoken": "^9.0.2",
-    "nodemon": "^3.1.10",
     "ws": "^8.18.2",
     "yahoo-finance2": "^2.13.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   },
   "author": "PulseTrader Team"
 }

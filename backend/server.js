@@ -10,7 +10,18 @@ require('dotenv').config();
 const app = express();
 
 // Initialize Firebase Admin with your service account
-
+const serviceAccount = {
+  "type": "service_account",
+  "project_id": "pulsetrader-3505c",
+  "private_key_id": "5f75ad4c7dccc88f2353ca95ec83683e4d10b5bc",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCpmZ6sHXhppQlf\nx2hxT+GIcqTNMefpn1+OIK613MbCOVgSRpZPYBvwGRJ5P9Tb9I6Xdn8PvVtjOlIZ\n0tbmrCOSBHfdaT64CAsni4M0HdTeNa3k/1hWDoPtRoAyuabCC5VLin5HroGWrHMJ\nqD70Yt+acdw1F91wWL1FT+IUA48KVAuFBJn1JgOnTVKg7d/ZmsUeoeL1hYfQnUg6\ngnmBBk2HBDk5DhO0dJKGUEwstXq4tfrtWr90tPFnTStrS2rclBEZFMBVxTDYKoyA\nKR6N03k36r14lctslJfdaCWt0gEQeo2BHIrAUiqzuoVVgtF7J96CT+lc3CPKQnyZ\nseq1j37BAgMBAAECggEAB8+6Ba5jzeXajS1Hi7SErD6vhX3vcwyyn3603U56Xxa6\nDjlvEd/Y2ZGmDqyYdrsIWESObKCplWPpxSO3Xy99geuvw6RlzZ8dOGiOFffrxoJN\nbJcwL+KCRArzu6JeYmCbMzwBPfb1JAX0VHUJ1UK6jsgAvvdG7TZBHXCk9owFahHK\nrSWNTsb4fKOwIL6ybRkOleKvANXixTfp6Wmxk9VAmzbILCK1Aofcesq2N/Px2VBW\n1WH7po8VVOb5ddP2ShIhhKQ5ws8jvKRTTyAukEim+EKGrp6ZJ2tFSIXyFzhHOesP\nyWnSb+1ftoB2bOdHi97wygAUBxG2/c9EWyDj2fY++QKBgQDddh2nzGQBE3ay9q1S\n3cgPrNHx8RwGnBQrOCoG20gWRrDnCc0X0xlskmmpr8C3/7d2+ywRIdG39odIiKY+\nHHz4WHNcD+mya+oLjEgTc6RYQ+PNiMMi9GibyaDcWmHpKsJBT+Eq/vbcPY4UFx0X\n0tLKw/exbb4Az99tRo3lrVf1jQKBgQDEDO6gCO4sgcJJ+EriENuDdCoE/QsEWwYc\n2rAOx++ffGxOrAUjTAQW7aav1O7XOYz7+epn4p8L0FQKQQuzV3DnPhYvDSuNB11i\nw6pIQOG3wOMGZjG/6wLrWD5O3fG7A2vola44TB9VbTYTEr686PV7eLoAoA3ONUQM\nMhYR75I/BQKBgQCIve/dthRhnbUDF9E5g3uOQjV34Fpfsmu5q/o3NZqzNn7wiVq7\nxTrDkTvw7HZgpmKP8tLo2Sr3Hh+2J7oOS+TWKzc/twujgYKIEtxGNndZkMHOHQ3w\nPV2CI+NRa/Vc1WwQi9QKile+8bsSqJrsJN7HGG2OfqZ9Nd1NSe0/zeKr2QKBgHNC\nryBDX9OmzhUy9sOF6aiVKQcZxdpfsW5RW+S0wzpeqkZud+7SiCz6t170rx615R9X\nROqin6MQbfhBWaGsrOIm7F/pPEuDovGn23rzOkEQE+j1OBZ/Eo5OqQMxFSc/0bdC\nGNVcW6ebt4jrIlxqEbjvt1savkMXqdQJtlQBJ1gJAoGAblbwJX9lNmwkeyQ7AuDH\nG5oQOYPoY9ULI/iGQeADD0JwdsQm5rQPZ3FMREZMq65+vb1mIRb6ox1TPDt8AMtu\nH7I9JBuTk4HzVlJdf2F8IUPLkFgpDXKB/PBIU1SPVqPSJ18ibfc5DU68MCRcWt4m\nCO1BWZ/m4uz14gO8jorIgqE=\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@pulsetrader-3505c.iam.gserviceaccount.com",
+  "client_id": "114454841593864974776",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40pulsetrader-3505c.iam.gserviceaccount.com"
+};
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)

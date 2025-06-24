@@ -1,0 +1,28 @@
+version: 0.1
+services:
+  api:
+    image: zhu0lin/pulsetrader-frontend:v1
+    imagePullPolicy: Always
+    command: []
+    args: [npm start]
+
+    ports:
+      - containerPort: 3000
+        protocol: TCP
+        expose: true
+    resourceUsage:
+      idle:
+        cpu: 200
+        memory: 400
+  mongo:
+    image: zhu0lin/pulsetrader-backend:v1
+    imagePullPolicy: Always
+    command: []
+    args: [npm start]
+    ports:
+      - containerPort: 3001
+        protocol: TCP
+    resourceUsage:
+      idle:
+        cpu: 500
+        memory: 500
